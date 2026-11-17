@@ -1,0 +1,4 @@
+# Static site: the npm files are only used to refresh shared/vercel-analytics.mjs
+node_modules
+package.json
+package-lock.json

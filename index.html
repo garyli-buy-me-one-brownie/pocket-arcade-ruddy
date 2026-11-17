@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pocket Arcade</title>
+<meta name="description" content="Pocket Arcade: small games, big moments. One-minute games in English, 香港繁體, 台灣繁體 and 日本語. Every run ends with a score card you can send as a challenge.">
+<meta property="og:site_name" content="Pocket Arcade">
+<meta property="og:title" content="Pocket Arcade · Small games, big moments">
+<meta property="og:description" content="One-minute games. Play, score, share, challenge. EN · 港 · 繁 · 日">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://pocket-arcade-ruddy.vercel.app/">
+<meta property="og:image" content="https://pocket-arcade-ruddy.vercel.app/og/hub.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0b0a0d">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%95%B9%3C/text%3E%3C/svg%3E">
+<style>
+:root {
+  /* Same Shōwa-film palette as the games: one dark look, vermilion + amber accents. */
+  --film: #0b0a0d;
+  --paper: #ece6d6;
+  --paper-dim: rgba(236, 230, 214, 0.65);
+  --vermilion: #d6402a;
+  --amber: #f0b44a;
+  --rule: rgba(236, 230, 214, 0.18);
+  --tile: rgba(236, 230, 214, 0.04);
+  --font-display: "Hiragino Mincho ProN", "Yu Mincho", "Noto Serif JP", "Noto Serif CJK TC", "Songti TC", serif;
+  --font-ui: "PingFang HK", "PingFang TC", "Hiragino Sans", "Noto Sans TC", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: dark;
+}
+*, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; }
+body { background: var(--film); color: var(--paper); font-family: var(--font-ui); -webkit-font-smoothing: antialiased; }
+.wrap {
+  max-width: 1080px; margin: 0 auto;
+  padding: max(18px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(40px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+}
+.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.kicker { font-size: 12px; font-weight: 700; letter-spacing: 0.28em; color: var(--paper-dim); }
+.langs { display: flex; align-items: center; gap: 6px; }
+.langs svg { width: 17px; height: 17px; color: var(--paper-dim); margin-right: 2px; }
+.lg {
+  appearance: none; font: inherit; min-width: 42px; height: 32px; padding: 0 8px; font-size: 13px;
+  color: var(--paper); background: transparent; border: 1px solid var(--rule); cursor: pointer;
+}
+.lg:hover { border-color: var(--paper-dim); }
+.lg[aria-pressed="true"] { border-color: var(--amber); color: var(--amber); }
+.lg:focus-visible, .play:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+@media (max-width: 480px) { .top .kicker { display: none; } .top { justify-content: flex-end; } }
+
+.hero { padding: 44px 0 30px; border-bottom: 1px solid var(--rule); }
+.hero h1 {
+  margin: 10px 0 16px; font-family: var(--font-display); font-weight: 800; line-height: 0.95; letter-spacing: 0.04em;
+  font-size: clamp(48px, 12vw, 116px); color: var(--vermilion); -webkit-text-stroke: 1.5px var(--paper); paint-order: stroke fill;
+}
+.multi { font-size: 13px; font-weight: 700; letter-spacing: 0.2em; color: var(--amber); }
+.lead { max-width: 54ch; margin: 14px 0 0; font-size: 16px; line-height: 1.75; }
+
+.grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); margin: 32px 0 40px; }
+.game { display: flex; flex-direction: column; background: var(--tile); border: 1px solid var(--rule); border-top: 4px solid var(--accent); }
+.art { display: block; width: 100%; aspect-ratio: 1200 / 630; object-fit: cover; background: #000; }
+.soonart {
+  aspect-ratio: 1200 / 630; display: grid; place-items: center;
+  background: repeating-linear-gradient(135deg, rgba(236, 230, 214, 0.035) 0 10px, transparent 10px 20px);
+  font-family: var(--font-display); font-weight: 800; font-size: 64px; color: var(--accent); opacity: 0.75;
+}
+.body { flex: 1; display: grid; gap: 8px; align-content: start; padding: 16px 16px 18px; }
+.name { font-size: 12px; font-weight: 700; letter-spacing: 0.24em; color: var(--paper-dim); }
+.game h2 { margin: 0; font-family: var(--font-display); font-weight: 800; font-size: 24px; text-wrap: balance; }
+.game p { margin: 0; font-size: 14px; line-height: 1.65; color: var(--paper-dim); }
+.foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 10px; }
+.best { font-size: 13px; color: var(--amber); font-variant-numeric: tabular-nums; }
+.play { padding: 10px 20px; font-size: 15px; letter-spacing: 0.1em; color: var(--amber); border: 1px solid var(--vermilion); text-decoration: none; }
+.play:hover { background: var(--vermilion); color: var(--paper); }
+.soon { font-size: 12px; font-weight: 700; letter-spacing: 0.2em; color: var(--paper-dim); }
+
+.how h3 { margin: 0 0 12px; }
+.steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); border-top: 1px solid var(--rule); margin: 0; padding: 0; list-style: none; }
+.steps li { padding: 16px 16px 18px 0; border-bottom: 1px solid var(--rule); }
+.steps .en { font-size: 11px; font-weight: 700; letter-spacing: 0.24em; color: var(--vermilion); }
+.steps b { display: block; margin: 6px 0 4px; font-family: var(--font-display); font-size: 20px; }
+.steps span { font-size: 14px; line-height: 1.6; color: var(--paper-dim); }
+footer { margin-top: 36px; text-align: center; font-size: 12px; font-weight: 700; letter-spacing: 0.28em; color: var(--paper-dim); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <span class="kicker">SMALL GAMES · BIG MOMENTS</span>
+    <div class="langs" role="group" aria-label="Language">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.2 3 14.8 0 18M12 3c-3 3.2-3 14.8 0 18"/></svg>
+      <button class="lg" data-lang="en" aria-label="English">EN</button>
+      <button class="lg" data-lang="hk" aria-label="香港繁體（廣東話）">港</button>
+      <button class="lg" data-lang="tw" aria-label="台灣繁體">繁</button>
+      <button class="lg" data-lang="jp" aria-label="日本語">日</button>
+    </div>
+  </div>
+
+  <header class="hero">
+    <div class="multi">MULTILINGUAL PLAY · EN · 港 · 繁 · 日</div>
+    <h1>POCKET<br>ARCADE</h1>
+    <p class="lead" id="lead"></p>
+  </header>
+
+  <main>
+    <div class="grid" id="grid"></div>
+    <section class="how" aria-labelledby="howT">
+      <h3 class="kicker" id="howT"></h3>
+      <ol class="steps" id="steps"></ol>
+    </section>
+  </main>
+  <footer>PLAY · SCORE · SHARE · CHALLENGE</footer>
+</div>
+
+<script src="shared/arcade.js"></script>
+<script>
+(function () {
+  var H = {
+    en: { lead: 'Tiny games you can finish in a minute. Every run ends with a score card you can send to a friend as a challenge.',
+      play: 'Play', watch: 'Watch', best: 'Best {0}', soon: 'COMING SOON', how: 'HOW IT WORKS',
+      steps: [['Play', 'One-minute rounds, one thumb.'], ['Score', 'Every run ends with a score card.'], ['Share', 'Send the card and a ready-made post to any chat app.'], ['Challenge', 'Your friend opens the link and plays against your score.']] },
+    hk: { lead: '一分鐘玩完嘅小遊戲。每局完咗都有張成績卡，可以傳俾朋友挑戰。',
+      play: '開始玩', watch: '開始睇', best: '最高 {0}', soon: '即將推出', how: '點樣玩',
+      steps: [['玩', '一分鐘一局，單手就玩得。'], ['計分', '每局完咗自動出成績卡。'], ['分享', '成績卡連埋文案，傳去任何 chat app。'], ['挑戰', '朋友撳條連結，就同你嘅分數鬥。']] },
+    tw: { lead: '一分鐘就能玩完的小遊戲。每局結束都有一張成績卡，可以傳給朋友挑戰。',
+      play: '開始玩', watch: '開始看', best: '最高 {0}', soon: '即將推出', how: '玩法',
+      steps: [['玩', '一局一分鐘，單手就能玩。'], ['計分', '每局結束自動產生成績卡。'], ['分享', '成績卡加上文案，傳到任何聊天 App。'], ['挑戰', '朋友點開連結，就和你的分數一較高下。']] },
+    jp: { lead: '1分で遊べるミニゲーム。遊び終わるとスコアカードができて、友だちに挑戦状として送れる。',
+      play: 'プレイ', watch: '観る', best: 'ベスト {0}', soon: '近日公開', how: '遊び方',
+      steps: [['プレイ', '1回1分、片手で遊べる。'], ['スコア', '終わるとスコアカードが自動でできる。'], ['シェア', 'カードと投稿文を好きなチャットアプリへ。'], ['チャレンジ', '友だちがリンクを開くと、あなたの記録に挑戦。']] }
+  };
+  var STEP_EN = ['PLAY', 'SCORE', 'SHARE', 'CHALLENGE'], GLYPH = {};
+  var grid = document.getElementById('grid'), steps = document.getElementById('steps');
+
+  function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+  function best(key) { try { return parseInt(localStorage.getItem(key) || '0', 10) || 0; } catch (e) { return 0; } }
+
+  function render(lang) {
+    var h = H[lang];
+    document.documentElement.lang = Arcade.htmlLang(lang);
+    document.getElementById('lead').textContent = h.lead;
+    document.getElementById('howT').textContent = h.how;
+    var bs = document.querySelectorAll('.lg');
+    for (var i = 0; i < bs.length; i++) bs[i].setAttribute('aria-pressed', bs[i].getAttribute('data-lang') === lang ? 'true' : 'false');
+
+    grid.textContent = '';
+    Arcade.games.forEach(function (g) {
+      var live = g.status === 'live', card = el('article', 'game');
+      card.style.setProperty('--accent', g.accent);
+      if (live) { var img = el('img', 'art'); img.src = 'og/' + g.id + '.jpg'; img.alt = ''; img.loading = 'lazy'; card.appendChild(img); }
+      else card.appendChild(el('div', 'soonart', GLYPH[g.id] || '?'));
+      var body = el('div', 'body');
+      body.appendChild(el('div', 'name', g.name.toUpperCase()));
+      body.appendChild(el('h2', '', g.title[lang]));
+      body.appendChild(el('p', '', g.blurb[lang]));
+      var foot = el('div', 'foot');
+      if (live) {
+        var b = g.bestKey ? best(g.bestKey) : 0;
+        foot.appendChild(el('span', 'best', b ? Arcade.fmt(h.best, [b]) : ''));
+        var a = el('a', 'play', g.kind === 'film' ? h.watch : h.play); a.href = g.path + '?lang=' + Arcade.TAG[lang]; foot.appendChild(a);
+      } else foot.appendChild(el('span', 'soon', h.soon));
+      body.appendChild(foot); card.appendChild(body); grid.appendChild(card);
+    });
+
+    steps.textContent = '';
+    h.steps.forEach(function (s, i) {
+      var li = el('li');
+      li.appendChild(el('div', 'en', '0' + (i + 1) + ' ' + STEP_EN[i]));
+      li.appendChild(el('b', '', s[0])); li.appendChild(el('span', '', s[1]));
+      steps.appendChild(li);
+    });
+  }
+
+  var lgs = document.querySelectorAll('.lg');
+  for (var i = 0; i < lgs.length; i++) lgs[i].addEventListener('click', function (e) {
+    var l = e.currentTarget.getAttribute('data-lang'); Arcade.setLang(l); render(l);
+  });
+  render(Arcade.pickLang());
+})();
+</script>
+</body>
+</html>

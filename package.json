@@ -1,0 +1,9 @@
+{
+  "private": true,
+  "scripts": {
+    "vendor": "sed '/sourceMappingURL/d' node_modules/@vercel/analytics/dist/index.mjs > shared/vercel-analytics.mjs"
+  },
+  "dependencies": {
+    "@vercel/analytics": "^2.0.1"
+  }
+}

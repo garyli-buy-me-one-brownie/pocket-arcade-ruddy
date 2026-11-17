@@ -1,0 +1,1673 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Kaiju Catch 3D · Pocket Arcade</title>
+<meta name="description" content="The Starship tower catch retold as a Shōwa tokusatsu kaiju film in 3D: a giant squid returns from space and is caught by chopsticks. Switch cameras and scrub the timeline. EN · 港 · 繁 · 日">
+<meta property="og:site_name" content="Pocket Arcade">
+<meta property="og:title" content="Kaiju Catch 3D · 大イカ 捕獲作戦">
+<meta property="og:description" content="A giant squid returns from space and is caught by chopsticks, filmed like a 1960s kaiju movie. Watch in 3D. EN · 港 · 繁 · 日">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://pocket-arcade-ruddy.vercel.app/kaiju-catch/">
+<meta property="og:image" content="https://pocket-arcade-ruddy.vercel.app/og/kaiju-catch.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0b0a0d">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8E%AC%3C/text%3E%3C/svg%3E">
+<style>
+:root {
+  /* Layout: full-bleed film frame. Ops-log cartouche top-left, transport strip along the bottom, settings panel top-right. */
+  --film: #0b0a0d;
+  --paper: #ece6d6;
+  --paper-dim: rgba(236, 230, 214, 0.62);
+  --vermilion: #d6402a;
+  --amber: #f0b44a;
+  --panel: rgba(12, 11, 15, 0.74);
+  --rule: rgba(236, 230, 214, 0.18);
+  --shade-strong: rgba(8, 7, 10, 0.88);
+  --shade-clear: rgba(8, 7, 10, 0);
+  --font-display: "Hiragino Mincho ProN", "Hiragino Mincho Pro", "Yu Mincho", YuMincho, "Noto Serif JP", "Noto Serif CJK JP", "Songti SC", serif;
+  --font-ui: "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Yu Gothic", "Noto Sans JP", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  color-scheme: dark;
+}
+*, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; margin: 0; }
+body { background: var(--film); color: var(--paper); overflow: hidden; font-family: var(--font-ui); -webkit-font-smoothing: antialiased; }
+#stage { position: fixed; inset: 0; }
+#stage canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+
+.log {
+  position: fixed; z-index: 5; pointer-events: none;
+  top: calc(env(safe-area-inset-top, 0px) + 14px); left: calc(env(safe-area-inset-left, 0px) + 14px);
+  width: 214px; padding: 10px 12px 11px; background: var(--panel); border: 1px solid var(--rule);
+  border-left: 3px solid var(--vermilion); font-family: var(--font-mono); font-size: 12px; line-height: 1.5;
+  font-variant-numeric: tabular-nums;
+}
+.log-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; padding-bottom: 6px; margin-bottom: 6px; border-bottom: 1px solid var(--rule); }
+.log-jp { font-family: var(--font-display); font-weight: 700; font-size: 14px; letter-spacing: 0.08em; white-space: nowrap; }
+.log-en { font-size: 9px; letter-spacing: 0.14em; color: var(--paper-dim); text-transform: uppercase; }
+.log dl { display: grid; gap: 2px; margin: 0; }
+.log dl div { display: flex; justify-content: space-between; gap: 8px; }
+.log dt { color: var(--paper-dim); }
+.log dt small { font-size: 9px; letter-spacing: 0.1em; }
+.log dd { margin: 0; color: var(--amber); }
+.phase { display: flex; align-items: baseline; gap: 8px; margin-top: 7px; padding-top: 6px; border-top: 1px solid var(--rule); }
+.phase b { font-family: var(--font-display); font-size: 22px; font-weight: 700; letter-spacing: 0.1em; color: var(--paper); }
+.phase span { font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--paper-dim); }
+.slowmo { margin-top: 6px; display: inline-block; padding: 1px 6px; border: 1px solid var(--vermilion); color: var(--vermilion); font-size: 11px; letter-spacing: 0.08em; }
+
+.transport {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; display: grid; gap: 8px;
+  padding-top: 26px; padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
+  padding-left: max(14px, env(safe-area-inset-left, 0px)); padding-right: max(14px, env(safe-area-inset-right, 0px));
+  background: linear-gradient(to top, var(--shade-strong), var(--shade-clear));
+}
+.transport { transition: opacity 0.45s ease; }
+body.idle .transport:not(:focus-within) { opacity: 0; pointer-events: none; }
+body.idle { cursor: none; }
+.t-row { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.cams { flex-wrap: wrap; gap: 6px; }
+.btn {
+  appearance: none; font: inherit; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--paper); background: var(--panel); border: 1px solid var(--rule); padding: 6px 10px; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
+}
+.btn:hover { border-color: var(--paper-dim); }
+.btn:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+.btn[aria-pressed="true"] { border-color: var(--vermilion); color: var(--amber); }
+.btn kbd { font-family: var(--font-mono); font-size: 10px; color: var(--paper-dim); border: 1px solid var(--rule); padding: 0 4px; }
+.play { width: 38px; justify-content: center; font-size: 13px; padding: 6px 0; }
+.ref { border-color: var(--amber); }
+.time { font-family: var(--font-mono); font-size: 12px; font-variant-numeric: tabular-nums; color: var(--amber); min-width: 62px; }
+.scrub-wrap { position: relative; flex: 1; min-width: 0; height: 30px; display: flex; align-items: center; }
+#scrub { width: 100%; margin: 0; appearance: none; background: transparent; height: 30px; cursor: pointer; position: relative; z-index: 1; }
+#scrub::-webkit-slider-runnable-track { height: 3px; background: var(--rule); }
+#scrub::-moz-range-track { height: 3px; background: var(--rule); }
+#scrub::-webkit-slider-thumb { appearance: none; width: 14px; height: 14px; margin-top: -5.5px; background: var(--vermilion); border: 2px solid var(--paper); border-radius: 50%; }
+#scrub::-moz-range-thumb { width: 10px; height: 10px; background: var(--vermilion); border: 2px solid var(--paper); border-radius: 50%; }
+.ticks { position: absolute; left: 7px; right: 7px; top: 0; bottom: 0; pointer-events: none; }
+.tick { position: absolute; top: -12px; transform: translateX(-1px); border-left: 1px solid var(--paper-dim); height: 26px; padding-left: 3px; font-family: var(--font-display); font-size: 11px; color: var(--paper-dim); white-space: nowrap; }
+select { font: inherit; font-size: 12px; color: var(--paper); background: var(--panel); border: 1px solid var(--rule); padding: 5px 6px; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+.title-card {
+  position: fixed; inset: 0; z-index: 20; display: grid; place-content: center; justify-items: center; gap: 10px;
+  text-align: center; cursor: pointer; background: radial-gradient(ellipse at center, var(--shade-clear), var(--shade-strong));
+  animation: tc-in 0.5s ease-out both;
+}
+.title-card.out { animation: tc-out 0.6s ease-in both; }
+.tc-kicker { font-family: var(--font-display); font-size: clamp(14px, 2.4vw, 22px); letter-spacing: 0.6em; color: var(--paper); padding-left: 0.6em; }
+.tc-title { margin: 0; display: flex; flex-direction: column; align-items: center; font-family: var(--font-display); font-weight: 800; line-height: 1.02; font-size: clamp(54px, 12vw, 164px); letter-spacing: 0.08em; color: var(--vermilion); -webkit-text-stroke: 2px var(--paper); paint-order: stroke fill; text-shadow: 7px 7px 0 var(--shade-strong); }
+.tc-en { font-size: clamp(11px, 1.6vw, 15px); letter-spacing: 0.42em; text-transform: uppercase; color: var(--paper); padding-left: 0.42em; }
+.tc-skip { margin-top: 14px; font-size: 10px; letter-spacing: 0.24em; text-transform: uppercase; color: var(--paper-dim); }
+@keyframes tc-in { from { opacity: 0; transform: scale(1.06); } to { opacity: 1; transform: none; } }
+@keyframes tc-out { to { opacity: 0; } }
+
+.err { position: fixed; inset: 0; z-index: 30; display: grid; place-content: center; padding: 24px; text-align: center; background: var(--film); color: var(--paper); font-size: 14px; line-height: 1.6; }
+.err b { color: var(--amber); }
+html[lang^="zh"] { --font-ui: "PingFang HK", "PingFang TC", "Noto Sans TC", "Hiragino Sans", system-ui, -apple-system, "Segoe UI", sans-serif; }
+.nav { justify-content: space-between; }
+.home { font-family: var(--font-display); font-weight: 800; font-size: 12px; letter-spacing: 0.2em; color: var(--paper-dim); text-decoration: none; white-space: nowrap; padding: 4px 0; }
+.home:hover, .home:focus-visible { color: var(--paper); }
+.langs { display: flex; align-items: center; gap: 6px; }
+.langs svg { width: 16px; height: 16px; color: var(--paper-dim); }
+.lg { min-width: 38px; justify-content: center; }
+
+.lil-gui.root { top: calc(env(safe-area-inset-top, 0px) + 10px) !important; right: calc(env(safe-area-inset-right, 0px) + 10px) !important; max-height: calc(100% - 170px); overflow-y: auto; }
+
+@media (max-width: 720px) {
+  .log { width: 168px; font-size: 11px; padding: 8px 10px; top: calc(env(safe-area-inset-top, 0px) + 58px); }
+  .phase b { font-size: 18px; }
+  .tick { font-size: 0; height: 16px; top: -2px; }
+  .home .long { display: none; }
+  .log-en { display: none; }
+  .btn { padding: 6px 8px; font-size: 10px; }
+  .btn kbd { display: none; }
+  .t-row { gap: 8px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .title-card, .title-card.out { animation: none; }
+}
+</style>
+</head>
+<body>
+<div id="stage"></div>
+
+<aside class="log" aria-label="Capture operations log">
+  <div class="log-head"><span class="log-jp" id="lLogT">捕獲作戦 記録</span><span class="log-en" id="lLogS">Ops log</span></div>
+  <dl>
+    <div><dt>T+</dt><dd id="hT">00:00.0</dd></div>
+    <div><dt id="lAlt">高度 <small>ALT</small></dt><dd id="hAlt">—</dd></div>
+    <div><dt id="lVs">降下率 <small>V/S</small></dt><dd id="hVs">—</dd></div>
+  </dl>
+  <div class="phase"><b id="hPhaseJp">帰還</b><span id="hPhaseEn">Return from space</span></div>
+  <div class="slowmo" id="hSlow" hidden><span id="lSlow">高速度撮影</span> <span id="hSlowF">×0.4</span></div>
+</aside>
+
+<div class="transport">
+  <div class="t-row">
+    <button class="btn play" id="play" aria-label="Pause">❚❚</button>
+    <span class="time" id="tRead">00:00.0</span>
+    <div class="scrub-wrap">
+      <input type="range" id="scrub" min="0" max="85" step="0.01" value="0" aria-label="Timeline position">
+      <div class="ticks" id="ticks"></div>
+    </div>
+    <label for="speed" class="sr" id="lSpeed">Playback speed</label>
+    <select id="speed">
+      <option value="0.25">0.25×</option>
+      <option value="0.5">0.5×</option>
+      <option value="1" selected>1×</option>
+      <option value="2">2×</option>
+      <option value="4">4×</option>
+    </select>
+  </div>
+  <div class="t-row cams" role="group" aria-label="Camera">
+    <button class="btn" data-cam="VIDEO_MATCH" aria-pressed="true"><kbd>1</kbd><span data-cam-label>Video match</span></button>
+    <button class="btn" data-cam="KAIJU_LOW" aria-pressed="false"><kbd>2</kbd><span data-cam-label>Kaiju low</span></button>
+    <button class="btn" data-cam="TOWER_CAM" aria-pressed="false"><kbd>3</kbd><span data-cam-label>Tower cam</span></button>
+    <button class="btn" data-cam="CHASE" aria-pressed="false"><kbd>4</kbd><span data-cam-label>Chase</span></button>
+    <button class="btn" data-cam="FREE" aria-pressed="false"><kbd>5</kbd><span data-cam-label>Free orbit</span></button>
+    <button class="btn ref" id="ref" title="Jump to the frame matched to the video at 10:26 and pause">10:26 frame</button>
+  </div>
+  <div class="t-row nav">
+    <a class="home" href="../" aria-label="Pocket Arcade">← <span class="long">POCKET </span>ARCADE</a>
+    <div class="langs" role="group" aria-label="Language">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.2 3 14.8 0 18M12 3c-3 3.2-3 14.8 0 18"/></svg>
+      <button class="btn lg" data-lang="en" aria-label="English">EN</button>
+      <button class="btn lg" data-lang="hk" aria-label="香港繁體（廣東話）">港</button>
+      <button class="btn lg" data-lang="tw" aria-label="台灣繁體">繁</button>
+      <button class="btn lg" data-lang="jp" aria-label="日本語">日</button>
+    </div>
+  </div>
+</div>
+
+<div class="title-card" id="titleCard" hidden>
+  <div class="tc-kicker" id="tcKick">特撮スペクタクル</div>
+  <h1 class="tc-title"><span id="tcT1">大イカ</span><span id="tcT2">捕獲作戦</span></h1>
+  <div class="tc-en">Operation: Giant Squid Capture</div>
+  <div class="tc-skip" id="tcSkip">Click to skip</div>
+</div>
+
+<div class="err" id="err" hidden></div>
+
+<script>
+  // If the 3D modules never arrive (blocked network, no WebGL), say so instead of showing a black frame.
+  setTimeout(function () {
+    if (!window.__ikaReady) {
+      var e = document.getElementById('err');
+      var M = {
+        en: ['The 3D scene didn’t start.', 'Three.js loads from cdn.jsdelivr.net and needs WebGL 2. Check your connection, then reload.'],
+        hk: ['3D 畫面開唔到。', 'Three.js 要由 cdn.jsdelivr.net 載入，部機要支援 WebGL 2。檢查吓網絡，再重新載入。'],
+        tw: ['3D 畫面無法啟動。', 'Three.js 需要從 cdn.jsdelivr.net 載入，裝置也要支援 WebGL 2。請檢查網路後重新載入。'],
+        jp: ['3D シーンを開始できません。', 'Three.js は cdn.jsdelivr.net から読み込み、WebGL 2 が必要です。接続を確認して再読み込みしてください。']
+      }[window.Arcade ? Arcade.pickLang() : 'en'];
+      e.innerHTML = '<div><b>' + M[0] + '</b><br>' + M[1] + '</div>';
+      e.hidden = false;
+    }
+  }, 12000);
+</script>
+
+<script src="../shared/arcade.js"></script>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
+    "lil-gui": "https://cdn.jsdelivr.net/npm/lil-gui@0.19.2/dist/lil-gui.esm.min.js"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import GUI from 'lil-gui';
+
+// ============================================================================
+// CONFIG — every tunable in one place. Camera values are calibrated from the
+// reference frames of the Flight 15 / Ship 42 catch video (10:26 onward).
+// ============================================================================
+const CONFIG = {
+  style:    { look: 'tokusatsu', grain: 0.5, halation: 0.6, gateWeavePx: 1.5, dustScratches: true,
+              aspect: '1.85', fps24: true, titleCard: true, directorCuts: false },
+  timeline: { duration: 85, timeScale: 1, loop: true, startAt: 0, spaceIntro: true, slowMoFactor: 0.4 },
+  squid:    { intensity: 0.9, tentacles: true, ink: true, inkDensity: 1.6, chopstickStyle: 'wood',
+              showWires: false, hug: true, hugTurns: 1.25 },
+  ship:     { length: 52, diameter: 9, catchPinOffsetFromNose: 21.5 },   // pins sit ~21 m below the nose (frame 5)
+  tower:    { height: 135, chopstickLength: 32, catchHeight: 120 },
+  descent:  { startAlt: 3000, bellyFlopSpeed: 84, flipAlt: 650, lateralDivert: 75, touchSpeed: 1.5 },
+  sun:      { elevationDeg: 26, azimuthDeg: 225 },                       // 15:20 CST, 14 Nov, Starbase; overcast
+  camera:   { preset: 'VIDEO_MATCH', distance: 2000, height: 115, azimuthDeg: 0,
+              vfovPadDeg: 16, fovCatchDeg: 4.6, horizonPct: 74, towerXPct: 49 },  // horizon/tower as % from top/left
+  render:   { maxPixelRatio: 2 },
+};
+
+const QS = new URLSearchParams(location.search);
+const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const MOBILE = matchMedia('(pointer: coarse)').matches || Math.min(innerWidth, innerHeight) < 560;
+
+// ---------- helpers ----------
+const V3 = THREE.Vector3;
+const DEG = Math.PI / 180;
+const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+const lerp = (a, b, t) => a + (b - a) * t;
+const sstep = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+const bump = (x, c, w) => Math.exp(-(((x - c) / w) ** 2));
+function easeOutBack(x) { const c1 = 1.6, c3 = c1 + 1; return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2); }
+function mulberry32(a) { return function () { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+function randDir(rng, out = new V3()) { const u = rng() * 2 - 1, th = rng() * Math.PI * 2, s = Math.sqrt(1 - u * u); return out.set(s * Math.cos(th), u, s * Math.sin(th)); }
+
+// ---------- vehicle + site geometry constants ----------
+const SHIP_L = CONFIG.ship.length, SHIP_R = CONFIG.ship.diameter / 2;
+const NOSE_LEN = SHIP_L * 0.35;
+const COM = SHIP_L * 0.35;                         // centre of mass above the base
+const PIN_BASE = SHIP_L - CONFIG.ship.catchPinOffsetFromNose;
+const PIN_UP = PIN_BASE - COM;                     // pin centre above the CoM
+const PIN_R = 0.6;
+const TOWER_HALF = 5.5;
+const CATCH_X = -(TOWER_HALF + 3.0 + SHIP_R);     // ship axis hangs here, beside the tower face
+const ARM_Z = SHIP_R + 1.5;
+const T_CONTACT = 58.5;
+const REF_T = 41.3;                                // matches the 10:26 frame: upright, ~390 m, engines lit
+
+function hullR(y) {
+  const yb = SHIP_L - NOSE_LEN;
+  if (y <= yb) return SHIP_R;
+  const t = Math.min(1, (y - yb) / NOSE_LEN);
+  return SHIP_R * Math.pow(Math.max(0, 1 - Math.pow(t, 1.9)), 0.62);
+}
+
+// ============================================================================
+// TRAJECTORY — analytic Hermite segments; every state is a pure function of t
+// ============================================================================
+let KEYS = [];
+const contactY = () => CONFIG.tower.catchHeight + PIN_R - PIN_UP;
+function buildKeys() {
+  const D = CONFIG.descent, cy = contactY();
+  KEYS = [
+    { t: 0,  p: [1400, D.startAlt + 2600, -700], v: [-110, -560, 45] },
+    { t: 8,  p: [850, D.startAlt, -420],         v: [-25, -D.bellyFlopSpeed, 15] },
+    { t: 36, p: [150, D.flipAlt, -20],           v: [-25, -D.bellyFlopSpeed, 4] },
+    { t: 41, p: [CATCH_X + D.lateralDivert, 360, -10], v: [-22, -40, 2] },
+    { t: 49, p: [CATCH_X, 205, 0],               v: [0, -14, 0] },
+    { t: 54, p: [CATCH_X, cy + 8, 0],            v: [0, -1.8, 0] },
+    { t: T_CONTACT, p: [CATCH_X, cy, 0],         v: [0, -D.touchSpeed, 0] },
+  ];
+}
+function traj(t, P, Vv) {
+  const K = KEYS;
+  if (t <= K[0].t) { for (let c = 0; c < 3; c++) { P[c] = K[0].p[c] + K[0].v[c] * (t - K[0].t); Vv[c] = K[0].v[c]; } return; }
+  const last = K[K.length - 1];
+  if (t >= last.t) { for (let c = 0; c < 3; c++) { P[c] = last.p[c]; Vv[c] = 0; } return; }
+  let i = 0; while (t > K[i + 1].t) i++;
+  const k0 = K[i], k1 = K[i + 1], h = k1.t - k0.t, s = (t - k0.t) / h, s2 = s * s, s3 = s2 * s;
+  const h00 = 2 * s3 - 3 * s2 + 1, h10 = s3 - 2 * s2 + s, h01 = -2 * s3 + 3 * s2, h11 = s3 - s2;
+  const d00 = 6 * s2 - 6 * s, d10 = 3 * s2 - 4 * s + 1, d01 = -6 * s2 + 6 * s, d11 = 3 * s2 - 2 * s;
+  for (let c = 0; c < 3; c++) {
+    P[c] = h00 * k0.p[c] + h10 * h * k0.v[c] + h01 * k1.p[c] + h11 * h * k1.v[c];
+    Vv[c] = (d00 * k0.p[c] + d10 * h * k0.v[c] + d01 * k1.p[c] + d11 * h * k1.v[c]) / h;
+  }
+}
+function throttleAt(t) {
+  if (t < 36) return 0;
+  if (t < 36.4) return (t - 36) / 0.4;
+  if (t < 41) return 1;
+  if (t < T_CONTACT) return lerp(0.85, 0.5, sstep(41, 56, t));
+  if (t < T_CONTACT + 0.3) return 0.5 * (1 - (t - T_CONTACT) / 0.3);
+  return 0;
+}
+const heatAt = (t) => (CONFIG.timeline.spaceIntro ? 1 - sstep(1.5, 9, t) : 0);
+const exciteAt = (t) => 0.12 + 0.9 * bump(t, 36.8, 1.4) + 0.85 * bump(t, 59, 1.2) + 0.3 * bump(t, 63.5, 2.5);
+const calmAt = (t) => sstep(61, 67, t);
+function rateAt(t) {
+  const w = sstep(35.4, 36.2, t) * (1 - sstep(40.6, 41.6, t)) + sstep(57.2, 58.0, t) * (1 - sstep(60.4, 61.4, t));
+  return lerp(1, CONFIG.timeline.slowMoFactor, w);
+}
+
+const _P = [0, 0, 0], _V = [0, 0, 0], _PA = [0, 0, 0], _VA = [0, 0, 0], _PB = [0, 0, 0], _VB = [0, 0, 0];
+const _qz = new THREE.Quaternion(), _qy = new THREE.Quaternion();
+const AXZ = new V3(0, 0, 1), AXY = new V3(0, 1, 0);
+function newState() { return { pos: new V3(), vel: new V3(), quat: new THREE.Quaternion(), axis: new V3(), phi: 0, carriageDy: 0, throttle: 0 }; }
+function shipState(t, out) {
+  traj(t, _P, _V); traj(t - 0.6, _PA, _VA); traj(t + 0.6, _PB, _VB);
+  const ax = (_VB[0] - _VA[0]) / 1.2, ay = (_VB[1] - _VA[1]) / 1.2;
+  const phiT = clamp(Math.atan2(-ax, ay + 9.81), -35 * DEG, 35 * DEG);  // body axis follows the thrust vector
+  const wob = 3 * DEG * Math.sin(0.9 * t);
+  const roll = 2 * DEG * Math.sin(0.6 * t + 1.0) * (1 - sstep(36, 39, t));
+  let phi;
+  if (t < 36) phi = Math.PI / 2 + wob;                                 // belly-flop: horizontal, heat shield down
+  else if (t < 41) phi = lerp(Math.PI / 2 + wob, phiT, easeOutBack((t - 36) / 5));  // flip with overshoot
+  else if (t < T_CONTACT) phi = phiT * (1 - sstep(54.5, T_CONTACT, t));
+  else phi = 0;
+  out.pos.set(_P[0], _P[1], _P[2]); out.vel.set(_V[0], _V[1], _V[2]); out.carriageDy = 0;
+  if (t >= T_CONTACT) {                                                // pins on the chopsticks: bounce + pendulum sway
+    const tau = t - T_CONTACT;
+    const dy = -0.5 * Math.exp(-1.8 * tau) * Math.sin(2 * Math.PI * 1.1 * tau);
+    const sway = 1.6 * DEG * Math.exp(-0.45 * tau) * Math.sin(2 * Math.PI * 0.35 * tau);
+    const py = CONFIG.tower.catchHeight + dy + PIN_R;
+    out.pos.set(CATCH_X + Math.sin(sway) * PIN_UP, py - Math.cos(sway) * PIN_UP, 0);
+    out.vel.set(0, 0, 0);
+    out.carriageDy = dy; phi = sway;
+  }
+  out.phi = phi;
+  _qz.setFromAxisAngle(AXZ, phi); _qy.setFromAxisAngle(AXY, -Math.PI / 2 + roll);
+  out.quat.copy(_qz).multiply(_qy);
+  out.axis.set(0, 1, 0).applyQuaternion(out.quat);
+  out.throttle = throttleAt(t);
+  return out;
+}
+
+// ============================================================================
+// RENDERER / SCENE
+// ============================================================================
+const stage = document.getElementById('stage');
+const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(devicePixelRatio, MOBILE ? 1.5 : CONFIG.render.maxPixelRatio));
+renderer.setSize(innerWidth, innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 0.98;
+stage.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+const FOG_COLOR = new THREE.Color('#b7bdc1');
+const FOG_DENSITY = 0.0001;
+scene.fog = new THREE.FogExp2(FOG_COLOR, FOG_DENSITY);
+scene.background = FOG_COLOR.clone();
+const camera = new THREE.PerspectiveCamera(16, innerWidth / innerHeight, 3, 46000);
+
+const GLSL_NOISE = /* glsl */`
+float hash12(vec2 p){ vec3 p3 = fract(vec3(p.xyx) * 0.1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }
+float hash13(vec3 p3){ p3 = fract(p3 * 0.1031); p3 += dot(p3, p3.zyx + 31.32); return fract((p3.x + p3.y) * p3.z); }
+vec3 hash33(vec3 p3){ p3 = fract(p3 * vec3(0.1031, 0.1030, 0.0973)); p3 += dot(p3, p3.yxz + 33.33); return fract((p3.xxy + p3.yxx) * p3.zyx); }
+float vnoise(vec2 p){ vec2 i = floor(p); vec2 f = fract(p); vec2 u = f * f * (3.0 - 2.0 * f);
+  return mix(mix(hash12(i), hash12(i + vec2(1.0, 0.0)), u.x), mix(hash12(i + vec2(0.0, 1.0)), hash12(i + vec2(1.0, 1.0)), u.x), u.y); }
+float vnoise3(vec3 p){ vec3 i = floor(p); vec3 f = fract(p); vec3 u = f * f * (3.0 - 2.0 * f);
+  float a = mix(mix(hash13(i), hash13(i + vec3(1.0, 0.0, 0.0)), u.x), mix(hash13(i + vec3(0.0, 1.0, 0.0)), hash13(i + vec3(1.0, 1.0, 0.0)), u.x), u.y);
+  float b = mix(mix(hash13(i + vec3(0.0, 0.0, 1.0)), hash13(i + vec3(1.0, 0.0, 1.0)), u.x), mix(hash13(i + vec3(0.0, 1.0, 1.0)), hash13(i + vec3(1.0, 1.0, 1.0)), u.x), u.y);
+  return mix(a, b, u.z); }
+float fbm2(vec2 p){ float a = 0.5, s = 0.0; for (int i = 0; i < 5; i++){ s += a * vnoise(p); p = p * 2.03 + vec2(17.1, 9.2); a *= 0.5; } return s; }
+float fbm3(vec3 p){ float a = 0.5, s = 0.0; for (int i = 0; i < 4; i++){ s += a * vnoise3(p); p = p * 2.02 + vec3(7.1, 3.3, 1.7); a *= 0.5; } return s; }
+`;
+
+// ---------- sky: painted overcast cyclorama ----------
+const skyUniforms = {
+  uTime: { value: 0 }, uHorizon: { value: FOG_COLOR },
+  uMid: { value: new THREE.Color('#868e95') }, uZenith: { value: new THREE.Color('#353b42') },
+  uCloudLight: { value: new THREE.Color('#c3c7ca') }, uCloudDark: { value: new THREE.Color('#495057') },
+};
+const skyMat = new THREE.ShaderMaterial({
+  uniforms: skyUniforms, side: THREE.BackSide, depthWrite: false, fog: false,
+  vertexShader: `varying vec3 vDir; void main(){ vDir = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+  fragmentShader: `
+    uniform float uTime; uniform vec3 uHorizon; uniform vec3 uMid; uniform vec3 uZenith; uniform vec3 uCloudLight; uniform vec3 uCloudDark;
+    varying vec3 vDir;
+    ${GLSL_NOISE}
+    void main(){
+      vec3 d = normalize(vDir);
+      float e = d.y;
+      vec3 col = mix(uHorizon, uMid, smoothstep(0.0, 0.16, e));
+      col = mix(col, uZenith, smoothstep(0.12, 0.8, e));
+      float ee = max(e, 0.02);
+      vec2 uv = d.xz / (ee + 0.08) * 0.9 + vec2(uTime * 0.006, uTime * 0.0015);
+      float c1 = fbm2(uv * vec2(0.55, 1.35));
+      float c2 = fbm2(uv * 2.3 + vec2(c1 * 1.8, 0.0));
+      float dens = smoothstep(0.32, 0.70, c1 * 0.75 + c2 * 0.45);
+      float shade = smoothstep(0.35, 0.85, c2 * 0.6 + c1 * 0.6);
+      vec3 cc = mix(uCloudLight, uCloudDark, shade);
+      col = mix(col, cc, dens * smoothstep(-0.01, 0.10, e) * 0.9);
+      col *= mix(1.0, 0.78, smoothstep(0.2, 0.9, e) * (0.5 + 0.5 * shade));
+      float brush = vnoise(vec2(atan(d.z, d.x) * 180.0, e * 18.0));
+      col *= 0.975 + 0.05 * brush;
+      col += uHorizon * 0.05 * exp(-pow((e - 0.006) / 0.004, 2.0));
+      if (e < 0.0) col = uHorizon;
+      gl_FragColor = vec4(col, 1.0);
+    }`,
+});
+const sky = new THREE.Mesh(new THREE.SphereGeometry(30000, 48, 24), skyMat);
+sky.renderOrder = -10; sky.frustumCulled = false;
+scene.add(sky);
+
+// image-based light from the same overcast sky, so steel, wet skin and lacquer reflect it
+const pmrem = new THREE.PMREMGenerator(renderer);
+{
+  const envScene = new THREE.Scene();
+  envScene.add(new THREE.Mesh(new THREE.SphereGeometry(400, 48, 24), skyMat));
+  const g = new THREE.Mesh(new THREE.CircleGeometry(390, 32), new THREE.MeshBasicMaterial({ color: new THREE.Color('#5d6258') }));
+  g.rotation.x = -Math.PI / 2; g.position.y = -20; envScene.add(g);
+  scene.environment = pmrem.fromScene(envScene, 0.03, 1, 1000).texture;
+}
+
+const hemi = new THREE.HemisphereLight(new THREE.Color('#cfd6dc'), new THREE.Color('#5a5e52'), 0.9);
+scene.add(hemi);
+const sun = new THREE.DirectionalLight(new THREE.Color('#fff1df'), 1.9);
+scene.add(sun); scene.add(sun.target);
+function updateSun() {
+  // world axes: north = +Z, east = −X (the Gulf lies east, beyond the beach)
+  const az = CONFIG.sun.azimuthDeg * DEG, el = CONFIG.sun.elevationDeg * DEG;
+  sun.position.set(-Math.sin(az) * Math.cos(el), Math.sin(el), Math.cos(az) * Math.cos(el)).multiplyScalar(1000);
+}
+updateSun();
+
+// ---------- ground: tidal flats, lagoons, the beach and the Gulf ----------
+const groundMat = new THREE.ShaderMaterial({
+  uniforms: { uFogColor: { value: FOG_COLOR }, uFogDensity: { value: FOG_DENSITY } },
+  vertexShader: `varying vec3 vW; void main(){ vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }`,
+  fragmentShader: `
+    uniform vec3 uFogColor; uniform float uFogDensity;
+    varying vec3 vW;
+    ${GLSL_NOISE}
+    float boxMask(vec2 p, vec2 c, vec2 h, float r){ vec2 q = abs(p - c) - h + r; float d = length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - r; return 1.0 - smoothstep(-1.5, 1.5, d); }
+    void main(){
+      vec2 p = vW.xz;
+      float dist = length(cameraPosition - vW);
+      vec2 q = p * 0.0021;
+      vec2 w = vec2(fbm2(q + vec2(1.7, 9.2)), fbm2(q + vec2(8.3, 2.8)));
+      float n = fbm2(q * vec2(1.0, 2.4) + w * 1.7);
+      float fine = vnoise(p * 0.03);
+      float far = smoothstep(-1200.0, -7000.0, p.y);
+      float lvl = 0.44 + far * 0.18;
+      float water = smoothstep(lvl + 0.012, lvl - 0.012, n + (fine - 0.5) * 0.03);
+      float ocean = smoothstep(-1480.0, -1560.0, p.x);
+      float beach = smoothstep(-1300.0, -1440.0, p.x) * (1.0 - ocean);
+      vec3 marsh = mix(vec3(0.065, 0.08, 0.055), vec3(0.11, 0.12, 0.085), fbm2(p * 0.008));
+      vec3 mud = vec3(0.16, 0.15, 0.12);
+      vec3 land = mix(marsh, mud, smoothstep(0.50, 0.62, n));
+      vec3 V = normalize(cameraPosition - vW);
+      float fres = pow(1.0 - clamp(V.y, 0.0, 1.0), 5.0);
+      vec3 waterCol = mix(vec3(0.17, 0.19, 0.20), uFogColor * 0.98, 0.25 + 0.6 * fres);
+      vec3 col = mix(land, waterCol, max(water, ocean));
+      col = mix(col, vec3(0.52, 0.49, 0.40), beach);
+      float pad = max(boxMask(p, vec2(100.0, 140.0), vec2(190.0, 280.0), 30.0), boxMask(p, vec2(640.0, 150.0), vec2(560.0, 8.0), 3.0));
+      vec3 concrete = vec3(0.30, 0.30, 0.29) * (0.9 + 0.12 * vnoise(p * 0.15));
+      col = mix(col, concrete, pad);
+      gl_FragColor = vec4(mix(col, uFogColor, 1.0 - exp(-pow(dist * uFogDensity, 2.0))), 1.0);
+    }`,
+});
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(90000, 90000), groundMat);
+ground.rotation.x = -Math.PI / 2;
+scene.add(ground);
+
+// ============================================================================
+// TOWERS, LAUNCH MOUNTS, PAD
+// ============================================================================
+const steelMat = new THREE.MeshStandardMaterial({ color: new THREE.Color('#8b9196'), metalness: 0.5, roughness: 0.5 });
+const darkSteelMat = new THREE.MeshStandardMaterial({ color: new THREE.Color('#4c5156'), metalness: 0.5, roughness: 0.55 });
+const unitBox = new THREE.BoxGeometry(1, 1, 1);
+function beamMatrix(a, b, th) {
+  const mid = a.clone().add(b).multiplyScalar(0.5);
+  const dir = b.clone().sub(a); const len = dir.length();
+  const q = new THREE.Quaternion().setFromUnitVectors(new V3(1, 0, 0), dir.normalize());
+  return new THREE.Matrix4().compose(mid, q, new V3(len, th, th));
+}
+function buildTower(x, z, h) {
+  const mats = [];
+  const c = TOWER_HALF - 0.6;
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) mats.push(new THREE.Matrix4().compose(new V3(sx * c, h / 2, sz * c), new THREE.Quaternion(), new V3(1.2, h, 1.2)));
+  const lv = 9, n = Math.floor(h / lv);
+  const corners = [[-c, -c], [c, -c], [c, c], [-c, c]];
+  for (let i = 0; i <= n; i++) {
+    const y = i * lv;
+    for (let f = 0; f < 4; f++) {
+      const A = corners[f], B = corners[(f + 1) % 4];
+      mats.push(beamMatrix(new V3(A[0], y, A[1]), new V3(B[0], y, B[1]), 0.6));
+      if (i < n) {
+        mats.push(beamMatrix(new V3(A[0], y, A[1]), new V3(B[0], y + lv, B[1]), 0.45));
+        mats.push(beamMatrix(new V3(B[0], y, B[1]), new V3(A[0], y + lv, A[1]), 0.45));
+      }
+    }
+  }
+  mats.push(new THREE.Matrix4().compose(new V3(0, h + 1, 0), new THREE.Quaternion(), new V3(TOWER_HALF * 2 + 1, 2, TOWER_HALF * 2 + 1)));
+  mats.push(new THREE.Matrix4().compose(new V3(0, h + 9, 0), new THREE.Quaternion(), new V3(0.5, 15, 0.5)));
+  mats.push(new THREE.Matrix4().compose(new V3(2.5, h + 4, 2.5), new THREE.Quaternion(), new V3(3, 5, 3)));
+  const im = new THREE.InstancedMesh(unitBox, steelMat, mats.length);
+  mats.forEach((m, i) => im.setMatrixAt(i, m));
+  im.position.set(x, 0, z);
+  scene.add(im);
+  return im;
+}
+function buildOLM(x, z) {
+  const g = new THREE.Group(); g.position.set(x, 0, z);
+  const table = new THREE.Mesh(unitBox, darkSteelMat); table.scale.set(20, 5, 20); table.position.y = 22; g.add(table);
+  for (let k = 0; k < 6; k++) {
+    const a = k / 6 * Math.PI * 2, leg = new THREE.Mesh(unitBox, darkSteelMat);
+    leg.scale.set(2.2, 20, 2.2); leg.position.set(Math.cos(a) * 8, 10, Math.sin(a) * 8); g.add(leg);
+  }
+  scene.add(g);
+}
+buildTower(0, 0, CONFIG.tower.height);
+buildOLM(CATCH_X, 0);
+buildTower(190, 300, CONFIG.tower.height);
+buildOLM(190 + CATCH_X, 300);
+{ // second tower: carriage parked low, steel arms folded
+  const c2 = new THREE.Mesh(unitBox, darkSteelMat); c2.scale.set(13.5, 5, 13.5); c2.position.set(190, 38, 300); scene.add(c2);
+  for (const s of [-1, 1]) { const a = new THREE.Mesh(unitBox, darkSteelMat); a.scale.set(22, 2.6, 1.8); a.position.set(190 - TOWER_HALF - 11, 39, 300 + s * 6); scene.add(a); }
+}
+{ // tank farm and low pad buildings
+  const tankMat = new THREE.MeshStandardMaterial({ color: new THREE.Color('#9a9d9b'), roughness: 0.6, metalness: 0.2 });
+  const cyl = new THREE.CylinderGeometry(1, 1, 1, 20);
+  const rng = mulberry32(9);
+  const tanks = new THREE.InstancedMesh(cyl, tankMat, 14);
+  for (let i = 0; i < 14; i++) {
+    const h = 8 + rng() * 8, r = 3 + rng() * 2.2;
+    tanks.setMatrixAt(i, new THREE.Matrix4().compose(new V3(70 + (i % 5) * 11, h / 2, -70 + Math.floor(i / 5) * 12), new THREE.Quaternion(), new V3(r, h, r)));
+  }
+  scene.add(tanks);
+  const bld = new THREE.InstancedMesh(unitBox, tankMat, 7);
+  const B = [[240, 320, 26, 12, 40], [235, 250, 18, 8, 22], [-60, 120, 30, 10, 18], [130, 40, 16, 7, 26], [60, 380, 40, 14, 24], [330, -260, 50, 36, 60], [410, -210, 34, 26, 44]];
+  B.forEach((b, i) => bld.setMatrixAt(i, new THREE.Matrix4().compose(new V3(b[0], b[3] / 2, b[1]), new THREE.Quaternion(), new V3(b[2], b[3], b[4]))));
+  scene.add(bld);
+}
+
+// ---------- the catch tower's carriage and the chopsticks ----------
+function makeCanvasTex(w, h, draw, srgb = true) {
+  const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h);
+  const t = new THREE.CanvasTexture(c); if (srgb) t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return t;
+}
+const woodTex = makeCanvasTex(1024, 128, (g, w, h) => {
+  g.fillStyle = '#d9bc8d'; g.fillRect(0, 0, w, h);
+  const r = mulberry32(77);
+  for (let i = 0; i < 80; i++) {
+    const y = r() * h;
+    g.strokeStyle = `rgba(${150 + r() * 30 | 0},${104 + r() * 26 | 0},${58 + r() * 22 | 0},${0.16 + r() * 0.32})`;
+    g.lineWidth = 0.6 + r() * 1.8; g.beginPath(); g.moveTo(0, y);
+    for (let x = 0; x <= w; x += 32) g.lineTo(x, y + Math.sin(x * 0.004 + i) * 3 + (r() - 0.5) * 1.2);
+    g.stroke();
+  }
+  g.fillStyle = '#3a150f'; g.fillRect(0, 0, 24, h);
+  g.fillStyle = '#b5321f'; g.fillRect(40, 0, 50, h);
+  g.fillStyle = 'rgba(255,224,196,0.35)'; g.fillRect(40, 18, 50, 5);
+});
+const trussTex = makeCanvasTex(1024, 128, (g, w, h) => {
+  g.clearRect(0, 0, w, h); g.strokeStyle = '#8b9196'; g.lineWidth = 12; g.strokeRect(6, 6, w - 12, h - 12);
+  g.lineWidth = 7; g.beginPath();
+  for (let x = 0; x < w; x += 64) { g.moveTo(x, 6); g.lineTo(x + 64, h - 6); g.moveTo(x + 64, 6); g.lineTo(x + 64, h - 6); }
+  g.stroke();
+});
+const woodMat = new THREE.MeshPhysicalMaterial({ map: woodTex, roughness: 0.55, clearcoat: 0.35, clearcoatRoughness: 0.45 });
+const trussMat = new THREE.MeshStandardMaterial({ map: trussTex, alphaTest: 0.5, side: THREE.DoubleSide, metalness: 0.5, roughness: 0.5 });
+function chopstickGeometry(len) {
+  const g = new THREE.BoxGeometry(1, 1, 1, 28, 1, 1);
+  const pos = g.attributes.position, uv = g.attributes.uv;
+  for (let i = 0; i < pos.count; i++) {
+    const u = pos.getX(i) + 0.5, y = pos.getY(i), z = pos.getZ(i);
+    let th = lerp(3.0, 0.75, u);
+    th *= lerp(1, 0.16, sstep(0.9, 1.0, u));
+    pos.setXYZ(i, u * len, (y + 0.5) * th - th, z * th * 0.9);   // flat top surface at y = 0
+    uv.setX(i, u);
+  }
+  g.computeVertexNormals();
+  return g;
+}
+const carriage = new THREE.Group(); scene.add(carriage);
+{
+  const box = new THREE.Mesh(unitBox, darkSteelMat); box.scale.set(13.5, 5, 13.5); box.position.y = -2.5; carriage.add(box);
+}
+const chopGeo = chopstickGeometry(CONFIG.tower.chopstickLength);
+const pivots = [], chopMeshes = [];
+for (const side of [1, -1]) {
+  const pv = new THREE.Group(); pv.position.set(-TOWER_HALF - 1.25, 0, side * ARM_Z); pv.userData.side = side;
+  const m = new THREE.Mesh(chopGeo, woodMat); pv.add(m); carriage.add(pv);
+  pivots.push(pv); chopMeshes.push(m);
+}
+
+// ============================================================================
+// THE SHIP / SQUID
+// ============================================================================
+const bodyU = { uTime: { value: 0 }, uSquid: { value: 0.9 }, uExcite: { value: 0 }, uHeat: { value: 0 }, uCalm: { value: 0 } };
+const bodyMat = new THREE.MeshPhysicalMaterial({ color: 0xffffff, roughness: 0.5, metalness: 0, clearcoat: 0.6, clearcoatRoughness: 0.22 });
+bodyMat.onBeforeCompile = (sh) => {
+  Object.assign(sh.uniforms, bodyU);
+  sh.vertexShader = 'varying vec3 vObjPos;\nvarying vec3 vObjN;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n vObjPos = position; vObjN = normal;');
+  sh.fragmentShader = sh.fragmentShader
+    .replace('#include <common>', `#include <common>
+      varying vec3 vObjPos; varying vec3 vObjN;
+      uniform float uTime; uniform float uSquid; uniform float uExcite; uniform float uHeat; uniform float uCalm;
+      ${GLSL_NOISE}
+      float hexDist(vec2 p){ p = abs(p); return max(dot(p, normalize(vec2(1.0, 1.7320508))), p.x); }
+      vec4 hexGrid(vec2 uv){ vec2 r = vec2(1.0, 1.7320508); vec2 h = r * 0.5; vec2 a = mod(uv, r) - h; vec2 b = mod(uv - h, r) - h; vec2 gv = dot(a, a) < dot(b, b) ? a : b; return vec4(gv, uv - gv); }
+      float chromato(vec3 p, float t, float exc){
+        float acc = 0.0;
+        for (int o = 0; o < 2; o++){
+          float sc = o == 0 ? 0.32 : 0.75;
+          vec3 q = p * sc; vec3 ip = floor(q); vec3 fp = fract(q);
+          for (int z = -1; z <= 1; z++) for (int y = -1; y <= 1; y++) for (int x = -1; x <= 1; x++){
+            vec3 g = vec3(float(x), float(y), float(z));
+            vec3 hh = hash33(ip + g + float(o) * 17.0);
+            float dist = length(g + hh - fp);
+            float pr = 0.16 + 0.22 * (0.5 + 0.5 * sin(t * (1.2 + 2.4 * hh.x) * (1.0 + 2.0 * exc) + hh.y * 6.2831));
+            acc = max(acc, 1.0 - smoothstep(pr - 0.08, pr, dist));
+          }
+        }
+        return acc;
+      }`)
+    .replace('#include <color_fragment>', `#include <color_fragment>
+      vec3 nO = normalize(vObjN);
+      float ang = atan(vObjPos.z, vObjPos.x);
+      float hgt = vObjPos.y;
+      float rr = max(length(vObjPos.xz), 0.5);
+      float wind = smoothstep(-0.2, 0.15, nO.z);
+      float tileMask = max(wind, smoothstep(${(SHIP_L - 3.5).toFixed(1)}, ${(SHIP_L - 1.5).toFixed(1)}, hgt));
+      tileMask = max(tileMask, 1.0 - smoothstep(0.3, 0.9, hgt));
+      vec2 hp = vec2(ang * rr, hgt) * 1.05;
+      vec4 hx = hexGrid(hp);
+      float aa = clamp(length(fwidth(hp)) * 1.2, 0.0, 1.0);
+      float grout = mix(1.0 - smoothstep(0.43, 0.48, hexDist(hx.xy)), 0.85, aa);
+      vec3 tileCol = vec3(0.045, 0.045, 0.05) * (0.75 + 0.5 * hash12(hx.zw)) * mix(0.35, 1.0, grout);
+      float fn = fbm3(vObjPos * 0.09);
+      vec3 irid = 0.5 + 0.5 * cos(6.2831 * (fn * 1.6 + hgt * 0.02 + vec3(0.0, 0.33, 0.67)));
+      float tintAmt = 0.35 + 0.4 * smoothstep(0.0, 0.6, 1.0 - abs(nO.z + 0.2));
+      vec3 steel = mix(vec3(0.62, 0.63, 0.65), vec3(0.4) + irid * 0.38, tintAmt);
+      float soot = smoothstep(0.5, 0.85, vnoise(vec2(ang * 5.0, hgt * 0.12)));
+      steel *= 1.0 - soot * 0.55;
+      vec3 realCol = mix(steel, tileCol, tileMask);
+      float back = smoothstep(-0.35, 0.35, nO.z);
+      vec3 sq = mix(vec3(0.13, 0.048, 0.038), vec3(0.026, 0.011, 0.011), back * 0.85);
+      sq = mix(sq, vec3(0.08) + irid * 0.25, 0.12 * (1.0 - back));
+      float ch = chromato(vObjPos, uTime, uExcite);
+      ch = mix(ch, 0.16, smoothstep(0.4, 1.6, length(fwidth(vObjPos))));
+      vec3 chromaCol = mix(vec3(0.22, 0.05, 0.03), vec3(0.95, 0.24, 0.09), uExcite);
+      sq = mix(sq, chromaCol, ch * 0.7);
+      float wave = 0.5 + 0.5 * sin(hgt * 0.35 - uTime * (2.0 + 4.0 * uExcite) + ang * 1.5);
+      sq *= 0.86 + 0.24 * wave * (0.3 + uExcite);
+      sq *= mix(1.0, mix(0.8, 1.0, grout), 0.6 * (1.0 - uSquid * 0.5));
+      diffuseColor.rgb = mix(realCol, sq, uSquid);
+      vec3 bodyEmissive = vec3(1.0, 0.34, 0.1) * uHeat * wind * (1.0 + fn) * 0.65;
+      bodyEmissive += chromaCol * ch * uExcite * 0.35 * uSquid;
+      bodyEmissive += vec3(0.9, 0.35, 0.18) * uCalm * 0.12 * (0.6 + 0.4 * wave) * uSquid;`)
+    .replace('#include <roughnessmap_fragment>', 'float roughnessFactor = mix(mix(0.32, 0.78, tileMask), 0.3, uSquid);')
+    .replace('#include <metalnessmap_fragment>', 'float metalnessFactor = mix(mix(0.85, 0.0, tileMask), 0.0, uSquid);')
+    .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n totalEmissiveRadiance += bodyEmissive;');
+};
+bodyMat.customProgramCacheKey = () => 'ika-body-v1';
+
+const ship = new THREE.Group(); scene.add(ship);
+const hull = new THREE.Group(); hull.position.y = -COM; ship.add(hull);
+{
+  const prof = [new THREE.Vector2(0.001, 0), new THREE.Vector2(SHIP_R * 0.92, 0), new THREE.Vector2(SHIP_R, 0.6)];
+  for (let i = 1; i <= 110; i++) { const y = 0.6 + (SHIP_L - 0.6) * i / 110; prof.push(new THREE.Vector2(Math.max(hullR(y), 0.001), y)); }
+  hull.add(new THREE.Mesh(new THREE.LatheGeometry(prof, 72), bodyMat));
+}
+// catch pins
+const pinMat = new THREE.MeshStandardMaterial({ color: new THREE.Color('#3b3f44'), metalness: 0.7, roughness: 0.35 });
+for (const s of [1, -1]) {
+  const p = new THREE.Mesh(new THREE.CylinderGeometry(PIN_R, PIN_R, 1.8, 14), pinMat);
+  p.rotation.z = Math.PI / 2; p.position.set(s * (SHIP_R + 0.9), PIN_BASE, 0); hull.add(p);
+}
+// engines, siphon
+const bellMat = new THREE.MeshStandardMaterial({ color: new THREE.Color('#2a2b2f'), metalness: 0.7, roughness: 0.4, side: THREE.DoubleSide });
+for (let k = 0; k < 6; k++) {
+  const inner = k < 3, a = (k % 3) / 3 * Math.PI * 2 + (inner ? 0 : Math.PI / 3);
+  const r = inner ? 1.25 : 3.1, h = inner ? 2.0 : 3.0;
+  const b = new THREE.Mesh(new THREE.CylinderGeometry(inner ? 0.35 : 0.6, inner ? 0.65 : 1.15, h, 18, 1, true), bellMat);
+  b.position.set(Math.cos(a) * r, -h / 2, Math.sin(a) * r); hull.add(b);
+}
+const fleshMat = new THREE.MeshPhysicalMaterial({ color: new THREE.Color('#4a1d14'), roughness: 0.35, clearcoat: 0.8, clearcoatRoughness: 0.2, side: THREE.DoubleSide });
+const siphon = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.7, 3.6, 22, 1, true), fleshMat);
+siphon.position.y = -1.8; hull.add(siphon);
+// eyes
+const eyeMat = new THREE.MeshPhysicalMaterial({ color: new THREE.Color('#060607'), roughness: 0.05, clearcoat: 1, clearcoatRoughness: 0.03 });
+const irisMat = new THREE.MeshStandardMaterial({ color: new THREE.Color('#a8742e'), metalness: 0.3, roughness: 0.4 });
+const eyes = [];
+for (const s of [1, -1]) {
+  const g = new THREE.Group(); g.position.set(s * (SHIP_R - 0.25), 6.5, 0);
+  g.add(new THREE.Mesh(new THREE.SphereGeometry(1.5, 24, 16), eyeMat));
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(1.5, 0.28, 8, 28), irisMat); ring.rotation.y = Math.PI / 2; g.add(ring);
+  hull.add(g); eyes.push(g);
+}
+// flaps / fins — rebuilt on the CPU each frame (tiny grids), blending real flap → squid fin
+const flapMat = new THREE.MeshStandardMaterial({ color: 0x151517, roughness: 0.55, side: THREE.DoubleSide });
+const FLAP_DARK = new THREE.Color('#141416'), FIN_COL = new THREE.Color('#3a1812');
+class Flap {
+  constructor(isFwd, side) {
+    this.isFwd = isFwd; this.side = side; this.NU = 10; this.NV = 5;
+    const nv = (this.NU + 1) * (this.NV + 1);
+    this.pos = new Float32Array(nv * 3);
+    this.geo = new THREE.BufferGeometry();
+    this.geo.setAttribute('position', new THREE.BufferAttribute(this.pos, 3));
+    const idx = [];
+    for (let u = 0; u < this.NU; u++) for (let v = 0; v < this.NV; v++) {
+      const a = u * (this.NV + 1) + v, b = (u + 1) * (this.NV + 1) + v, c = b + 1, d = a + 1;
+      idx.push(a, b, d, b, c, d);
+    }
+    this.geo.setIndex(idx);
+    this.mesh = new THREE.Mesh(this.geo, flapMat); this.mesh.frustumCulled = false;
+    hull.add(this.mesh);
+  }
+  update(sq, t, def) {
+    const { NU, NV, side, isFwd } = this; let k = 0;
+    for (let iu = 0; iu <= NU; iu++) for (let iv = 0; iv <= NV; iv++) {
+      const u = iu / NU, v = iv / NV * 0.98;
+      let yH, y, span;
+      if (isFwd) {
+        const yHr = 36 + u * 9, yr = lerp(yHr, 37.5 + u * 6, v), sr = v * 3.6;
+        const yHs = 33.5 + u * 16.5, ys = lerp(yHs, 42, v), ss = v * 6.0;
+        yH = lerp(yHr, yHs, sq); y = lerp(yr, ys, sq); span = lerp(sr, ss, sq);
+      } else {
+        yH = 1.5 + u * 12; y = lerp(yH, 3.5 + u * 8, v); span = v * 4.0 * lerp(1, 0.7, sq);
+      }
+      const x0 = hullR(yH) - 0.2;
+      const rip = Math.sin(u * Math.PI * 2.4 - t * (isFwd ? 3.4 : 2.0) + side) * v * (isFwd ? 1.2 : 0.4) * sq;
+      this.pos[k++] = side * (x0 + span * Math.cos(def));
+      this.pos[k++] = y;
+      this.pos[k++] = span * Math.sin(def) + rip;
+    }
+    this.geo.attributes.position.needsUpdate = true;
+    this.geo.computeVertexNormals();
+  }
+}
+const flaps = [new Flap(true, 1), new Flap(true, -1), new Flap(false, 1), new Flap(false, -1)];
+
+// engine flame (additive), nozzle glow, plasma sheath glow, flame light
+const flameU = { uTime: { value: 0 }, uThrottle: { value: 0 } };
+const flameMat = new THREE.ShaderMaterial({
+  uniforms: flameU, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+  vertexShader: `varying vec2 vUv; varying vec3 vN; varying vec3 vV;
+    void main(){ vUv = uv; vec4 wp = modelMatrix * vec4(position, 1.0); vN = normalize(mat3(modelMatrix) * normal); vV = normalize(cameraPosition - wp.xyz); gl_Position = projectionMatrix * viewMatrix * wp; }`,
+  fragmentShader: `uniform float uTime; uniform float uThrottle; varying vec2 vUv; varying vec3 vN; varying vec3 vV;
+    void main(){
+      float along = 1.0 - vUv.y;
+      float fres = pow(abs(dot(normalize(vN), normalize(vV))), 1.3);
+      float flick = 0.85 + 0.15 * sin(uTime * 61.0 + along * 20.0) + 0.1 * sin(uTime * 37.0);
+      float dia = pow(0.5 + 0.5 * cos(along * 38.0), 6.0) * (1.0 - smoothstep(0.1, 0.6, along));
+      vec3 col = mix(vec3(3.0, 2.6, 2.0), vec3(2.3, 0.95, 0.36), smoothstep(0.0, 0.35, along));
+      col = mix(col, vec3(0.9, 0.35, 0.9), smoothstep(0.35, 1.0, along));
+      col += vec3(1.5, 1.3, 1.6) * dia;
+      float a = (1.0 - smoothstep(0.5, 1.0, along)) * fres * flick * uThrottle;
+      gl_FragColor = vec4(col * a, 1.0);
+    }`,
+});
+const flameGeo = new THREE.CylinderGeometry(1.4, 3.4, 1, 24, 16, true); flameGeo.translate(0, -0.5, 0);
+const flame = new THREE.Mesh(flameGeo, flameMat); flame.position.y = -2.8; flame.renderOrder = 6; hull.add(flame);
+function glowTexture(stops) {
+  return makeCanvasTex(128, 128, (g, w, h) => {
+    const gr = g.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2);
+    stops.forEach(([o, c]) => gr.addColorStop(o, c)); g.fillStyle = gr; g.fillRect(0, 0, w, h);
+  });
+}
+const glowTex = glowTexture([[0, 'rgba(255,255,255,1)'], [0.25, 'rgba(255,200,140,0.6)'], [1, 'rgba(255,120,40,0)']]);
+const nozzleGlow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color: 0xffd8a8, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, fog: false }));
+nozzleGlow.position.y = -4; nozzleGlow.renderOrder = 6; hull.add(nozzleGlow);
+const plasma = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color: 0xff7034, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, fog: false }));
+plasma.scale.setScalar(75); ship.add(plasma);
+const flameLight = new THREE.PointLight(0xffa060, 0, 160, 2); flameLight.position.y = -10; hull.add(flameLight);
+
+// ---------- arms and tentacles ----------
+const armU = { uTime: bodyU.uTime, uExcite: bodyU.uExcite, uCalm: bodyU.uCalm };
+const armMat = new THREE.MeshPhysicalMaterial({ color: 0xffffff, roughness: 0.38, clearcoat: 0.85, clearcoatRoughness: 0.2 });
+armMat.onBeforeCompile = (sh) => {
+  Object.assign(sh.uniforms, armU);
+  sh.vertexShader = 'varying vec2 vArmUv;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n vArmUv = uv;');
+  sh.fragmentShader = sh.fragmentShader
+    .replace('#include <common>', `#include <common>
+      varying vec2 vArmUv; uniform float uTime; uniform float uExcite; uniform float uCalm;
+      ${GLSL_NOISE}`)
+    .replace('#include <color_fragment>', `#include <color_fragment>
+      float along = vArmUv.x, around = vArmUv.y;
+      float sideF = 0.5 + 0.5 * cos(around * 6.2831);
+      vec3 c = mix(vec3(0.22, 0.085, 0.06), vec3(0.035, 0.013, 0.012), sideF * 0.8);
+      float spots = smoothstep(0.55, 0.85, vnoise(vec2(along * 70.0, around * 7.0) * 1.3 + uTime * 0.15));
+      vec3 chromaA = mix(vec3(0.32, 0.08, 0.04), vec3(0.95, 0.24, 0.09), uExcite);
+      c = mix(c, chromaA, spots * 0.75);
+      float inner = 1.0 - smoothstep(0.07, 0.15, abs(around - 0.5));
+      vec2 sc = vec2(fract(along * 80.0) - 0.5, (around - 0.5) * 6.0);
+      float suck = inner * (1.0 - smoothstep(0.26, 0.34, length(sc))) * (1.0 - smoothstep(0.3, 0.8, fwidth(along * 80.0)));
+      c = mix(c, vec3(0.55, 0.42, 0.36), suck * 0.85);
+      diffuseColor.rgb = c;
+      vec3 armEmissive = chromaA * spots * uExcite * 0.3 + c * uCalm * 0.08;`)
+    .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n totalEmissiveRadiance += armEmissive;');
+};
+armMat.customProgramCacheKey = () => 'ika-arm-v1';
+
+class Limb {
+  constructor(i, isT) {
+    this.i = i; this.isT = isT; this.S = 48; this.Rn = 10;
+    this.len = isT ? 56 : 30; this.rb = isT ? 1.0 : 1.45;
+    this.angle = i / 10 * Math.PI * 2 + 0.15; this.phase = i * 1.37;
+    this.dir = i % 2 === 0 ? 1 : -1;
+    this.yEnd = isT ? 30 + (i % 3) * 3 : 60 - (i % 4) * 4.5;
+    // casting order: the two long tentacles shoot first, then the eight arms follow round the body
+    this.delay = isT ? (i === 2 ? 0 : 0.16) : 0.55 + [0, 1, -1, 2, 3, 4, 5, -1, 6, 7][i] * 0.17 + ((i * 0.37) % 0.08);
+    this.spine = Array.from({ length: this.S + 1 }, () => new V3());
+    this.refN = new V3(1, 0, 0);
+    const S = this.S, R = this.Rn, nv = (S + 1) * (R + 1);
+    this.pos = new Float32Array(nv * 3); this.nor = new Float32Array(nv * 3);
+    const uv = new Float32Array(nv * 2), idx = [];
+    for (let a = 0; a <= S; a++) for (let b = 0; b <= R; b++) { const k = a * (R + 1) + b; uv[k * 2] = a / S; uv[k * 2 + 1] = b / R; }
+    for (let a = 0; a < S; a++) for (let b = 0; b < R; b++) {
+      const p = a * (R + 1) + b, q = (a + 1) * (R + 1) + b, r = q + 1, s = p + 1;
+      idx.push(p, s, q, q, s, r);
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(this.pos, 3));
+    g.setAttribute('normal', new THREE.BufferAttribute(this.nor, 3));
+    g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+    g.setIndex(idx);
+    this.geo = g;
+    this.mesh = new THREE.Mesh(g, armMat); this.mesh.frustumCulled = false;
+    scene.add(this.mesh);
+  }
+  radius(s) {
+    if (this.isT) {
+      const stalk = this.rb * 0.55 * (1 - 0.45 * s);
+      const club = this.rb * 0.75 * Math.exp(-(((s - 0.85) / 0.07) ** 2));
+      return (stalk + club) * (1 - sstep(0.94, 1.0, s) * 0.95);
+    }
+    return this.rb * Math.pow(1 - 0.92 * s, 0.85) * (1 - sstep(0.96, 1, s) * 0.8);
+  }
+  updateMesh(radScale, breathe, t) {
+    const S = this.S, R = this.Rn, sp = this.spine, pos = this.pos, nor = this.nor;
+    const T = new V3(), N = new V3(), B = new V3();
+    for (let i = 0; i <= S; i++) {
+      T.subVectors(sp[Math.min(S, i + 1)], sp[Math.max(0, i - 1)]);
+      if (T.lengthSq() < 1e-8) T.set(0, -1, 0);
+      T.normalize();
+      if (i === 0) N.copy(this.refN);
+      N.addScaledVector(T, -N.dot(T));
+      if (N.lengthSq() < 1e-6) { N.set(1, 0, 0).addScaledVector(T, -T.x); if (N.lengthSq() < 1e-6) N.set(0, 0, 1); }
+      N.normalize();
+      B.crossVectors(T, N);
+      const s = i / S;
+      const r = this.radius(s) * radScale * (1 + breathe * Math.sin(t * 1.6 - s * 8.0 + this.phase));
+      for (let j = 0; j <= R; j++) {
+        const th = j / R * Math.PI * 2, c = Math.cos(th), sn = Math.sin(th);
+        const nx = N.x * c + B.x * sn, ny = N.y * c + B.y * sn, nz = N.z * c + B.z * sn;
+        const k = (i * (R + 1) + j) * 3;
+        pos[k] = sp[i].x + nx * r; pos[k + 1] = sp[i].y + ny * r; pos[k + 2] = sp[i].z + nz * r;
+        nor[k] = nx; nor[k + 1] = ny; nor[k + 2] = nz;
+      }
+    }
+    this.geo.attributes.position.needsUpdate = true;
+    this.geo.attributes.normal.needsUpdate = true;
+  }
+}
+const limbs = [];
+for (let i = 0; i < 10; i++) limbs.push(new Limb(i, i === 2 || i === 7));
+
+function sePoint(th, a, out) {  // rounded-square path just outside the tower lattice
+  const c = Math.cos(th), s = Math.sin(th), e = 2 / 10;
+  out.x = a * Math.sign(c) * Math.pow(Math.abs(c), e);
+  out.z = a * Math.sign(s) * Math.pow(Math.abs(s), e);
+  return out;
+}
+const _base = new V3(), _rad = new V3(), _down = new V3(), _perp = new V3(), _d = new V3(), _p = new V3(), _wind = new V3(), _hp = new V3(), _h0 = new V3();
+function updateLimbs(t, S, sq) {
+  const show = CONFIG.squid.tentacles && sq > 0.12;
+  const radScale = sstep(0.12, 0.5, sq);
+  const pulse = (t > 41.3 && t < T_CONTACT) ? Math.max(0, Math.sin(2 * Math.PI * (t - 41.5) / 1.15)) : 0;
+  const writhe = sstep(58.3, 58.8, t) * (1 - sstep(60.5, 62, t));
+  let spread = 0.15 + 0.8 * bump(t, 37.2, 1.3) + sstep(40, 42, t) * (1 - sstep(57, 59, t)) * (0.4 + 0.3 * pulse) + writhe * 0.4
+    + 0.25 * sstep(57, 59, t);                       // stay splayed after the catch instead of lining up
+  const flow = 1 - sstep(36, 38.5, t);
+  const droop = 0.05 + 0.3 * sstep(59, 61.5, t);
+  // keeps some life after the catch so the arms never hang like rods
+  const waveAmp = Math.max(0.24, 0.5 + 0.5 * bump(t, 37.2, 1.5) + 0.25 * pulse + 1.0 * writhe - 0.2 * sstep(61, 63, t));
+  const omega = 2.6 + 3.0 * writhe;
+  const hugBreath = 0.05 * calmAt(t);
+  _wind.copy(S.vel).negate();
+  const wl = _wind.length(); if (wl > 0.5) _wind.divideScalar(wl); else _wind.set(0, 1, 0);
+  for (const L of limbs) {
+    L.mesh.visible = show;
+    if (!show) continue;
+    _base.set(Math.cos(L.angle) * SHIP_R * 0.62, -COM + 0.6, Math.sin(L.angle) * SHIP_R * 0.62).applyQuaternion(S.quat).add(S.pos);
+    _rad.set(Math.cos(L.angle), 0, Math.sin(L.angle)).applyQuaternion(S.quat);
+    _down.copy(S.axis).negate();
+    _perp.crossVectors(_down, _rad).normalize();
+    _d.copy(_down).addScaledVector(_rad, spread * (L.isT ? 0.6 : 1)).normalize();
+    _p.copy(_base);
+    const seg = L.len / L.S;
+    const sway = Math.sin(t * 0.9 + L.phase * 0.7);                 // slow whole-arm sway
+    const curl = 0.6 + 0.4 * Math.sin(t * 1.3 + L.phase);           // tips curl in and relax
+    const wA = Math.min(waveAmp, 1.1);                              // the softer tips would flail at full writhe
+    for (let k = 0; k <= L.S; k++) {
+      L.spine[k].copy(_p);
+      const s = k / L.S;
+      const soft = 0.3 + 2.1 * s * s;                                // firm at the root, floppy at the tip
+      _d.addScaledVector(_perp, (Math.sin(k * 0.32 - t * omega + L.phase) * wA * 0.11
+        + Math.sin(k * 0.55 - t * omega * 1.7 + L.phase * 2.3) * wA * 0.07) * soft + sway * 0.02 * s);
+      _d.addScaledVector(_rad, Math.cos(k * 0.21 - t * omega * 0.7 + L.phase * 1.7) * wA * 0.07 * soft);
+      _d.addScaledVector(_rad, -0.055 * curl * sstep(0.5, 1, s));
+      _d.addScaledVector(_wind, flow * 0.06 * (0.3 + s));
+      _d.y -= droop * 0.07 * (0.15 + s);
+      if (!L.isT) _d.addScaledVector(_perp, 0.05 * s * s * waveAmp);
+      _d.normalize();
+      _p.addScaledVector(_d, seg);
+    }
+    if (CONFIG.squid.hug) {
+      // Wild, not mechanical: each arm is cast out on a parabolic arc that swings round the outside
+      // of the tower, lands, coils down the lattice and then cinches tight. Everything is worked in
+      // cylinder coordinates round the tower axis, so no arm passes through the steel.
+      const tau = t - 60.2 - L.delay;
+      if (tau > 0) {
+        const TAU2 = Math.PI * 2, CAST = L.isT ? 0.6 : 0.8, WRAP = 1.7;
+        const unwrap = (ang, ref) => ang + Math.round((ref - ang) / TAU2) * TAU2;
+        const seR = (th, a) => { sePoint(th, a, _hp); return Math.hypot(_hp.x, _hp.z); };
+        const B0 = _h0.copy(L.spine[0]);
+        const thB = Math.atan2(B0.z, B0.x), rB = Math.hypot(B0.x, B0.z), yB = B0.y;
+        const th0 = thB + (L.i - 4.5) * 0.04;
+        const turns = (L.isT ? CONFIG.squid.hugTurns : CONFIG.squid.hugTurns * 0.5) * L.dir;
+        const y0 = yB - 1.5, y1 = L.yEnd, reach = 0.12;
+        // landing spot: 40% of the way round the coil, just clear of the corners
+        const thT = th0 + turns * TAU2 * 0.4, yT = lerp(y0, y1, 0.4);
+        const rT = seR(thT, TOWER_HALF + 1.2 + (L.isT ? 1.0 : 0.4));
+        // the throw starts from wherever the free tip is
+        const tip = L.spine[L.S];
+        const thF = unwrap(Math.atan2(tip.z, tip.x), thB), rF = Math.hypot(tip.x, tip.z), yF = tip.y;
+        const e = 1 - Math.pow(1 - clamp(tau / CAST, 0, 1), 3);           // fast out, slowing as it lands
+        const thE = lerp(thF, thT, e), rE = lerp(rF, rT, e), yE = lerp(yF, yT, e);
+        const lift = (L.isT ? 13 : 7) * (0.55 + 0.45 * Math.sin(Math.PI * e));   // arc height
+        const flare = (L.isT ? 7 : 4) * (0.5 + 0.5 * Math.sin(Math.PI * e));  // arc swings outward
+        const wCast = sstep(0, 0.18, tau);                                  // whip out of the free pose
+        const coil = sstep(0, 1, (tau - CAST) / WRAP);                      // coil forms after landing
+        const cinch = sstep(CAST + WRAP * 0.6, CAST + WRAP + 0.9, tau);      // then squeezes tight
+        const loose = 1 + 0.35 * (1 - cinch);
+        for (let k = 0; k <= L.S; k++) {
+          const s = k / L.S, bul = 4 * s * (1 - s), rr = L.radius(s) * radScale;
+          // point on the flying arc (a ripple runs down it while airborne)
+          let th = lerp(thB, thE, s) + 0.05 * Math.sin(s * 9 - tau * 14) * s * (1 - coil);
+          let r = lerp(rB, rE, s) + flare * bul, y = lerp(yB, yE, s) + lift * bul;
+          // matching point on the coil
+          const u = Math.max(0, (s - reach) / (1 - reach)), thN = th0 + turns * TAU2 * u;
+          sePoint(thN, (TOWER_HALF + rr * 1.05 + 0.3) * (s < reach ? 1 : loose), _hp);
+          let thC = unwrap(Math.atan2(_hp.z, _hp.x), thN), rC = Math.hypot(_hp.x, _hp.z), yC = lerp(y0, y1, u);
+          if (s < reach) { const q = sstep(0, 1, s / reach); thC = lerp(thB, thC, q); rC = lerp(rB, rC, q); yC = lerp(yB, y0, q); }
+          th = lerp(th, thC, coil); r = lerp(r, rC, coil); y = lerp(y, yC, coil);
+          if (s > 0.02) r = Math.max(r, seR(th, TOWER_HALF + rr + 0.3));   // never inside the lattice
+          _hp.set(Math.cos(th) * r, y, Math.sin(th) * r);
+          L.spine[k].lerp(_hp, wCast);
+        }
+      }
+    }
+    L.refN.copy(_rad);
+    L.updateMesh(radScale, hugBreath, t);
+  }
+}
+
+// marionette wires (easter egg)
+const wireGeo = new THREE.BufferGeometry();
+wireGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(5 * 2 * 3), 3));
+const wires = new THREE.LineSegments(wireGeo, new THREE.LineBasicMaterial({ color: 0x2a2a2a, transparent: true, opacity: 0.45 }));
+wires.frustumCulled = false; scene.add(wires);
+
+// ============================================================================
+// PARTICLES — sumi ink-tank plumes (normal blend) and sparks/plasma (additive).
+// All spawns are precomputed from the analytic trajectory, so scrubbing is exact.
+// ============================================================================
+const inkMat = new THREE.ShaderMaterial({
+  uniforms: {
+    uTime: { value: 0 }, uDensity: { value: 1.6 }, uSquid: { value: 0.9 }, uInkOn: { value: 1 },
+    uFogDensity: { value: FOG_DENSITY }, uFogColor: { value: FOG_COLOR }, uWind: { value: new V3(-2.6, 0, 1.4) },
+    uClearPos: { value: new V3(CATCH_X * 0.5, 92, 0) }, uClear: { value: 0 },
+  },
+  transparent: true, depthWrite: false,
+  blending: THREE.CustomBlending, blendSrc: THREE.OneFactor, blendDst: THREE.OneMinusSrcAlphaFactor, blendEquation: THREE.AddEquation,
+  vertexShader: `
+    attribute vec4 aSpawn; attribute vec4 aVel; attribute vec4 aParams; attribute float aKind;
+    uniform float uTime; uniform float uDensity; uniform float uInkOn; uniform float uFogDensity; uniform vec3 uWind; uniform vec3 uClearPos; uniform float uClear;
+    varying vec2 vUv; varying float vAlpha; varying float vSeed; varying float vKind; varying float vFog; varying float vAge;
+    void main(){
+      float age = uTime - aSpawn.w;
+      float life = aParams.z;
+      float keep = step(aParams.w, uDensity * 0.5) * (aKind < 0.5 ? uInkOn : 1.0);
+      if (age < 0.0 || age > life || keep < 0.5) { gl_Position = vec4(2.0, 2.0, 2.0, 1.0); return; }
+      float k = aVel.w;
+      vec3 p = aSpawn.xyz + aVel.xyz * (1.0 - exp(-k * age)) / k + uWind * age;
+      p.y += (aKind > 1.5 ? -0.8 : 0.35) * age;
+      float sw = aParams.w * 40.0;
+      p += vec3(sin(age * 0.35 + sw), 0.5 * sin(age * 0.27 + sw * 1.3), cos(age * 0.31 + sw * 0.7)) * (2.0 + age * 0.25);
+      float size = aParams.x + aParams.y * (1.0 - exp(-age * 0.35));
+      vec4 mv = viewMatrix * vec4(p, 1.0);
+      float rot = aParams.w * 6.2831 + age * 0.03;
+      vec2 c = mat2(cos(rot), -sin(rot), sin(rot), cos(rot)) * position.xy;
+      mv.xy += c * size;
+      gl_Position = projectionMatrix * mv;
+      vUv = uv; vSeed = aParams.w; vKind = aKind; vAge = age;
+      vAlpha = smoothstep(0.0, 0.6, age) * (1.0 - smoothstep(life * 0.55, life, age));
+      if (aKind < 1.5) vAlpha *= mix(1.0, smoothstep(10.0, 38.0, length(p - uClearPos)), uClear);
+      vFog = (1.0 - exp(-pow(length(mv.xyz) * uFogDensity, 2.0))) * (1.0 - 0.75 * smoothstep(0.05, 0.4, normalize(p - cameraPosition).y));
+    }`,
+  fragmentShader: `
+    uniform float uSquid; uniform vec3 uFogColor;
+    varying vec2 vUv; varying float vAlpha; varying float vSeed; varying float vKind; varying float vFog; varying float vAge;
+    ${GLSL_NOISE}
+    void main(){
+      vec2 p = vUv * 2.0 - 1.0;
+      float r = length(p);
+      float n = fbm2(p * 1.6 + vSeed * 31.0 + vAge * 0.04);
+      float n2 = fbm2(p * 3.5 + vSeed * 17.0 - vAge * 0.06);
+      float edge = 1.0 - r + (n - 0.5) * 0.9 + (n2 - 0.5) * 0.25;
+      float a = smoothstep(0.0, 0.5, edge);
+      if (a < 0.01) discard;
+      float core = smoothstep(0.1, 0.95, 1.0 - r * 1.1 + (n - 0.5) * 0.35);
+      vec3 col;
+      float alpha;
+      if (vKind < 0.5) {
+        vec3 ink = mix(vec3(0.055, 0.052, 0.068), vec3(0.012, 0.011, 0.018), core) + vec3(0.02, 0.025, 0.05) * (1.0 - core) * 0.5;
+        vec3 vapor = mix(vec3(0.70, 0.72, 0.74), vec3(0.84, 0.85, 0.87), core);
+        col = mix(vapor, ink, uSquid);
+        alpha = a * vAlpha * mix(mix(0.25, 0.5, core), mix(0.55, 0.93, core), uSquid);
+      } else if (vKind < 1.5) {
+        col = mix(vec3(0.42, 0.43, 0.44), vec3(0.6, 0.61, 0.62), core);
+        alpha = a * vAlpha * 0.4 * mix(0.5, 0.9, core);
+      } else {
+        col = vec3(0.50, 0.45, 0.38);
+        alpha = a * vAlpha * 0.6;
+      }
+      col = mix(col, uFogColor, vFog);
+      gl_FragColor = vec4(col * alpha, alpha);
+    }`,
+});
+const glowMat = new THREE.ShaderMaterial({
+  uniforms: { uTime: { value: 0 } }, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+  vertexShader: `
+    attribute vec4 aSpawn; attribute vec4 aVel; attribute vec4 aParams; attribute float aKind;
+    uniform float uTime; varying vec2 vUv; varying float vA; varying float vKind;
+    void main(){
+      float age = uTime - aSpawn.w, life = aParams.z;
+      if (age < 0.0 || age > life) { gl_Position = vec4(2.0, 2.0, 2.0, 1.0); return; }
+      vec3 p = aSpawn.xyz + aVel.xyz * age;
+      if (aKind > 0.5) p.y -= 4.905 * age * age;
+      float k = age / life;
+      vec4 mv = viewMatrix * vec4(p, 1.0);
+      mv.xy += position.xy * mix(aParams.x, aParams.y, k);
+      gl_Position = projectionMatrix * mv;
+      vUv = uv; vKind = aKind;
+      vA = (1.0 - k) * smoothstep(0.0, 0.05, age) * aVel.w;
+    }`,
+  fragmentShader: `
+    varying vec2 vUv; varying float vA; varying float vKind;
+    void main(){
+      vec2 p = vUv * 2.0 - 1.0;
+      float a = exp(-dot(p, p) * 4.0) * vA;
+      if (a < 0.003) discard;
+      vec3 c = vKind > 0.5 ? mix(vec3(1.6, 0.5, 0.12), vec3(3.0, 2.2, 1.0), vA) : vec3(2.2, 0.8, 0.35);
+      gl_FragColor = vec4(c * a, 1.0);
+    }`,
+});
+function makeSystem(mat, max) {
+  const base = new THREE.PlaneGeometry(1, 1);
+  const g = new THREE.InstancedBufferGeometry();
+  g.index = base.index; g.setAttribute('position', base.attributes.position); g.setAttribute('uv', base.attributes.uv);
+  const attrs = { aSpawn: 4, aVel: 4, aParams: 4, aKind: 1 };
+  for (const [k, n] of Object.entries(attrs)) g.setAttribute(k, new THREE.InstancedBufferAttribute(new Float32Array(max * n), n));
+  g.instanceCount = 0;
+  const m = new THREE.Mesh(g, mat); m.frustumCulled = false; m.renderOrder = 4; scene.add(m);
+  return { mesh: m, geo: g, max };
+}
+const inkSys = makeSystem(inkMat, 6000);
+const glowSys = makeSystem(glowMat, 900);
+function fillSystem(sys, list) {
+  const n = Math.min(list.length, sys.max), g = sys.geo;
+  const A = g.attributes.aSpawn.array, Vv = g.attributes.aVel.array, Pp = g.attributes.aParams.array, K = g.attributes.aKind.array;
+  for (let i = 0; i < n; i++) {
+    const e = list[i];
+    A.set([e.p.x, e.p.y, e.p.z, e.t], i * 4); Vv.set([e.v.x, e.v.y, e.v.z, e.k], i * 4);
+    Pp.set([e.s0, e.s1, e.life, e.seed], i * 4); K[i] = e.kind;
+  }
+  for (const k of ['aSpawn', 'aVel', 'aParams', 'aKind']) g.attributes[k].needsUpdate = true;
+  g.instanceCount = n;
+}
+function buildParticles() {
+  const rng = mulberry32(1234);
+  const ink = [], glow = [];
+  const st = newState();
+  const at = (t) => {
+    shipState(t, st);
+    return { base: new V3(0, -COM - 1.5, 0).applyQuaternion(st.quat).add(st.pos), down: st.axis.clone().negate(), vel: st.vel.clone(), pos: st.pos.clone() };
+  };
+  const add = (list, p, t, v, k, s0, s1, life, kind) => list.push({ p, t, v, k, s0, s1, life, kind, seed: rng() });
+  const rd = () => randDir(rng);
+  for (let i = 0; i < 450; i++) {                     // ink tail behind the returning ember
+    const t0 = rng() * 8, b = at(t0);
+    add(ink, b.base.add(rd().multiplyScalar(15)), t0, b.vel.multiplyScalar(0.05).add(rd().multiplyScalar(5)), 0.6, 30 + rng() * 20, 50 + rng() * 40, 12 + rng() * 4, 0);
+  }
+  for (let i = 0; i < 1700; i++) {                    // belly-flop ink ribbons
+    const t0 = 8 + Math.pow(rng(), 0.8) * 28, b = at(t0);
+    const v = b.down.multiplyScalar(6 + rng() * 8).add(rd().multiplyScalar(3)).add(b.vel.multiplyScalar(0.12));
+    add(ink, b.base.add(rd().multiplyScalar(2.5)), t0, v, 0.5, 5 + rng() * 5, 18 + rng() * 16, 26 + rng() * 10, 0);
+  }
+  for (let i = 0; i < 1100; i++) {                    // the flip: one huge ink burst
+    const t0 = 36.2 + rng() * 1.6, b = at(t0);
+    const v = rd().addScaledVector(b.down, 0.8).normalize().multiplyScalar(10 + rng() * 28);
+    add(ink, b.base.add(rd().multiplyScalar(3)), t0, v, 0.35, 8 + rng() * 8, 30 + rng() * 35, 34 + rng() * 10, 0);
+  }
+  for (let k = 0; k < 11; k++) for (let i = 0; i < 45; i++) {   // siphon pulses during the landing burn
+    const t0 = 41.5 + k * 1.15 + rng() * 0.3; if (t0 > 56.5) continue;
+    const b = at(t0);
+    const v = b.down.multiplyScalar(18 + rng() * 14).add(rd().multiplyScalar(6));
+    add(ink, b.base.add(rd().multiplyScalar(2)), t0, v, 0.6, 4 + rng() * 4, 10 + rng() * 8, 14 + rng() * 5, 0);
+  }
+  for (let i = 0; i < 120; i++) {                     // final puff at the catch
+    const t0 = T_CONTACT - 0.1 + rng() * 0.8, b = at(t0);
+    add(ink, b.base.add(rd().multiplyScalar(3)), t0, rd().multiplyScalar(4 + rng() * 9).addScaledVector(b.down, 4), 0.5, 3 + rng() * 2, 8 + rng() * 6, 11 + rng() * 3, 0);
+  }
+  for (let i = 0; i < 160; i++) {                     // plume steam rolling off the launch mount
+    const t0 = 50 + rng() * 8.5, a = rng() * Math.PI * 2, sp = 8 + rng() * 10;
+    add(ink, new V3(CATCH_X + (rng() - 0.5) * 12, 20 + rng() * 5, (rng() - 0.5) * 12), t0, new V3(Math.cos(a) * sp, 1 + rng() * 1.5, Math.sin(a) * sp), 0.5, 5 + rng() * 3, 9 + rng() * 8, 9 + rng() * 3, 1);
+  }
+  for (let i = 0; i < 150; i++) {                     // a last puff in the aftermath
+    const t0 = 72 + rng() * 1.5, b = at(t0);
+    add(ink, b.base.add(rd().multiplyScalar(2)), t0, rd().multiplyScalar(3 + rng() * 5).addScaledVector(b.down, 2), 0.5, 3 + rng() * 3, 10 + rng() * 10, 13 + rng() * 3, 0);
+  }
+  for (let i = 0; i < 120; i++) {                     // dust shaken off the lattice by the hug
+    const t0 = 62 + rng() * 8, th = rng() * Math.PI * 2, y = 40 + rng() * 45;
+    const pt = sePoint(th, TOWER_HALF + 0.5, new V3()); pt.y = y;
+    add(ink, pt, t0, new V3(pt.x * 0.1, -2 - rng() * 2, pt.z * 0.1), 0.3, 1.5 + rng(), 3 + rng() * 3, 7 + rng() * 3, 2);
+  }
+  for (let i = 0; i < 300; i++) {                     // plasma sheath trail
+    const t0 = rng() * 9, b = at(t0);
+    add(glow, b.pos.add(rd().multiplyScalar(8)), t0, b.vel.multiplyScalar(0.1), heatAt(t0) * 0.4, 26 + rng() * 10, 6, 1.6 + rng(), 0);
+  }
+  for (let i = 0; i < 260; i++) {                     // sparks where the pins strike the chopsticks
+    const t0 = T_CONTACT - 0.05 + rng() * 0.45, side = rng() < 0.5 ? 1 : -1;
+    add(glow, new V3(CATCH_X + (rng() - 0.5) * 1.5, CONFIG.tower.catchHeight + 0.2, side * (SHIP_R + 0.9)), t0,
+      new V3((rng() - 0.5) * 16, 6 + rng() * 14, side * (3 + rng() * 8)), 1, 0.9, 0.5, 1.2 + rng() * 1.6, 1);
+  }
+  for (let i = 0; i < 70; i++) {                      // small sparks as the arms squeeze the lattice
+    const t0 = 62 + rng() * 7, th = rng() * Math.PI * 2;
+    const pt = sePoint(th, TOWER_HALF + 0.4, new V3()); pt.y = 45 + rng() * 40;
+    add(glow, pt, t0, new V3(pt.x * 0.6 + (rng() - 0.5) * 4, 2 + rng() * 5, pt.z * 0.6 + (rng() - 0.5) * 4), 0.8, 0.6, 0.3, 0.8 + rng(), 1);
+  }
+  fillSystem(inkSys, ink);
+  fillSystem(glowSys, glow);
+}
+
+// ============================================================================
+// POST — EffectComposer: render → bloom → output (sRGB) → Shōwa film pass
+// ============================================================================
+const FilmShader = {
+  uniforms: {
+    tDiffuse: { value: null }, uRes: { value: new THREE.Vector2(1, 1) }, uFrame: { value: 0 }, uOn: { value: 1 },
+    uGrain: { value: 0.5 }, uHal: { value: 0.6 }, uWeave: { value: 1.5 }, uDust: { value: 1 }, uBox: { value: new THREE.Vector4(0, 0, 1, 1) },
+  },
+  vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+  fragmentShader: `
+    uniform sampler2D tDiffuse; uniform vec2 uRes; uniform float uFrame; uniform float uOn; uniform float uGrain; uniform float uHal; uniform float uWeave; uniform float uDust; uniform vec4 uBox;
+    varying vec2 vUv;
+    float h12(vec2 p){ vec3 p3 = fract(vec3(p.xyx) * 0.1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }
+    void main(){
+      vec2 uv = vUv;
+      float fr = uFrame;
+      uv += vec2(sin(fr * 1.73) + 0.6 * sin(fr * 0.37 + 1.0), cos(fr * 1.31) + 0.6 * sin(fr * 0.23)) * 0.5 * uWeave / uRes * uOn;
+      vec2 cc = uv - 0.5;
+      float r2 = dot(cc, cc);
+      vec2 ca = cc * r2 * 0.008 * uOn;
+      vec3 col = vec3(texture2D(tDiffuse, uv + ca).r, texture2D(tDiffuse, uv).g, texture2D(tDiffuse, uv - ca).b);
+      if (uOn > 0.5) {
+        vec3 hal = vec3(0.0);
+        for (int i = 0; i < 8; i++) {
+          float a = float(i) * 0.7854 + 0.39;
+          vec2 o = vec2(cos(a), sin(a)) / uRes;
+          hal += max(texture2D(tDiffuse, uv + o * 5.0).rgb - 0.72, 0.0) + max(texture2D(tDiffuse, uv + o * 13.0).rgb - 0.72, 0.0) * 0.6;
+        }
+        col += vec3(1.0, 0.32, 0.12) * dot(hal, vec3(0.3333)) * 0.22 * uHal;
+        float l = dot(col, vec3(0.299, 0.587, 0.114));
+        col = mix(vec3(l), col, 1.16);
+        col = mix(col, col * vec3(0.93, 1.0, 1.05) + vec3(0.0, 0.012, 0.022), (1.0 - l) * 0.7);
+        col = mix(col, col * vec3(1.05, 1.0, 0.92), smoothstep(0.35, 1.0, l) * 0.35);
+        col = col * 0.96 + 0.02;
+        float g = h12(floor(vUv * uRes) + fract(fr * 0.1317) * 1000.0) - 0.5;
+        col += g * uGrain * 0.16 * (0.4 + 0.6 * (1.0 - abs(l - 0.5) * 2.0));
+        if (uDust > 0.5) {
+          for (int k = 0; k < 3; k++) {
+            float hk = h12(vec2(fr, float(k) * 7.31));
+            if (hk > 0.55) {
+              vec2 dp = vec2(h12(vec2(fr * 1.3, float(k))), h12(vec2(float(k), fr * 0.7)));
+              float rad = (1.0 + 2.5 * h12(vec2(fr, float(k) + 3.0))) / uRes.y;
+              float m = 1.0 - smoothstep(rad * 0.6, rad, length((vUv - dp) * vec2(uRes.x / uRes.y, 1.0)));
+              col = mix(col, hk > 0.8 ? vec3(0.9) : vec3(0.05), m * 0.7);
+            }
+          }
+          float blk = floor(fr / 3.0);
+          if (h12(vec2(blk, 9.1)) > 0.92) {
+            float sx = h12(vec2(blk, 2.7));
+            float line = 1.0 - smoothstep(0.0, 1.2 / uRes.x, abs(vUv.x - sx - sin(vUv.y * 9.0 + fr) * 0.0015));
+            col = mix(col, vec3(0.8), line * 0.2);
+          }
+        }
+        col *= 1.0 - smoothstep(0.18, 0.75, r2 * 1.6) * 0.45;
+      }
+      if (vUv.x < uBox.x || vUv.y < uBox.y || vUv.x > uBox.z || vUv.y > uBox.w) col = vec3(0.0);
+      gl_FragColor = vec4(clamp(col, 0.0, 1.0), 1.0);
+    }`,
+};
+const rt = new THREE.WebGLRenderTarget(innerWidth, innerHeight, { type: THREE.HalfFloatType, samples: MOBILE ? 0 : 4 });
+const composer = new EffectComposer(renderer, rt);
+composer.addPass(new RenderPass(scene, camera));
+const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.45, 0.6, 0.92);
+bloom.enabled = !MOBILE;
+composer.addPass(bloom);
+composer.addPass(new OutputPass());
+const film = new ShaderPass(FilmShader);
+composer.addPass(film);
+
+// ============================================================================
+// CAMERA RIGS
+// ============================================================================
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enabled = false; controls.enableDamping = true; controls.target.set(-6, 95, 0);
+let bandFrac = 1, bandAspect = innerWidth / innerHeight;
+const camTmp = newState();
+const shipAt = (t, out) => out.copy(shipState(t, camTmp).pos);
+const _cPos = new V3(), _cTgt = new V3(), _t1 = new V3(), _t2 = new V3();
+function jitter(t) { return (Math.sin(t * 7.3) + 0.6 * Math.sin(t * 13.1 + 1.3) + 0.4 * Math.sin(t * 23.7 + 2.1)) / 2; }
+function rigVideo(t, pos, tgt) {
+  const C = CONFIG.camera, az = C.azimuthDeg * DEG;
+  pos.set(Math.sin(az) * C.distance, C.height, Math.cos(az) * C.distance);
+  const vPad = C.vfovPadDeg * DEG;
+  const fwd = new V3(-pos.x, 0, -pos.z); const dist = fwd.length(); fwd.normalize();
+  const right = new V3(-fwd.z, 0, fwd.x);
+  const hTan = Math.tan(vPad / 2) * bandAspect;
+  const padH = fwd.clone().addScaledVector(right, (0.5 - C.towerXPct / 100) * 2 * hTan).normalize();
+  const pitchTan = (C.horizonPct / 100 - 0.5) * 2 * Math.tan(vPad / 2);
+  const padT = pos.clone().addScaledVector(padH, dist); padT.y += pitchTan * dist;
+  const track = shipAt(t - 0.3, _t1);
+  const dShip = Math.max(200, track.distanceTo(pos));
+  const fTrack = clamp(2 * Math.atan((SHIP_L / 0.22) / 2 / dShip), 2.2 * DEG, 20 * DEG);
+  const catchT = new V3(CATCH_X * 0.55, CONFIG.tower.catchHeight - 6, 0);
+  const hugT = new V3(-4, 78, 0), afterT = new V3(-2, 95, 0);
+  const wf = sstep(33, 37, t), wa = sstep(35, 41, t), wc = sstep(51, 56, t), wh = sstep(61.5, 66.5, t), we = sstep(73, 84, t);
+  tgt.copy(track).lerp(padT, wa).lerp(catchT, wc).lerp(hugT, wh).lerp(afterT, we);
+  let lf = lerp(Math.log(fTrack), Math.log(vPad), wf);
+  lf = lerp(lf, Math.log(C.fovCatchDeg * DEG), wc);
+  lf = lerp(lf, Math.log(6.6 * DEG), wh);
+  lf = lerp(lf, Math.log(12 * DEG), we);
+  if (!REDUCED) {
+    const d = tgt.distanceTo(pos), j = 0.02 * DEG * d;
+    tgt.addScaledVector(right, jitter(t) * j); tgt.y += jitter(t + 17.3) * j;
+  }
+  return Math.exp(lf);
+}
+function rigKaiju(t, pos, tgt) {
+  pos.set(CATCH_X + 70, 2, 150);
+  shipAt(t - 0.15, tgt);
+  tgt.lerp(_t2.set(CATCH_X, CONFIG.tower.catchHeight - 8, 0), sstep(55, 60, t));
+  return 38 * DEG;
+}
+function rigTower(t, pos, tgt) {
+  pos.set(1, CONFIG.tower.height + 30, 16);
+  shipAt(t, tgt);
+  tgt.lerp(_t2.set(CATCH_X, CONFIG.tower.catchHeight - 22, 0), sstep(45, 55, t));
+  return 54 * DEG;
+}
+function rigChase(t, pos, tgt) {
+  shipAt(t - 0.7, pos); pos.add(_t2.set(55, 22, 85));
+  shipAt(t, tgt);
+  return 32 * DEG;
+}
+let lastPreset = null;
+function updateCamera(t) {
+  let preset = CONFIG.camera.preset;
+  if (CONFIG.style.directorCuts && preset === 'VIDEO_MATCH' && ((t > 36.2 && t < 41) || (t > 55.5 && t < 61))) preset = 'KAIJU_LOW';
+  if (preset === 'FREE') {
+    if (lastPreset !== 'FREE') {
+      controls.enabled = true;
+      camera.position.set(260, 170, 420);
+      controls.target.set(-6, 95, 0);
+      camera.fov = 2 * Math.atan(Math.tan(36 * DEG / 2) / bandFrac) / DEG; camera.updateProjectionMatrix();
+    }
+    controls.update();
+    lastPreset = preset;
+    return;
+  }
+  controls.enabled = false;
+  let fov;
+  if (preset === 'KAIJU_LOW') fov = rigKaiju(t, _cPos, _cTgt);
+  else if (preset === 'TOWER_CAM') fov = rigTower(t, _cPos, _cTgt);
+  else if (preset === 'CHASE') fov = rigChase(t, _cPos, _cTgt);
+  else fov = rigVideo(t, _cPos, _cTgt);
+  camera.position.copy(_cPos); camera.up.set(0, 1, 0); camera.lookAt(_cTgt);
+  camera.fov = 2 * Math.atan(Math.tan(fov / 2) / bandFrac) / DEG;
+  camera.updateProjectionMatrix();
+  lastPreset = preset;
+}
+
+// ============================================================================
+// UPDATE — sets the whole scene from the show clock t
+// ============================================================================
+const state = newState();
+const PHASES = [
+  { t: 0,  jp: ['帰還', '宇宙から帰還'],       en: 'Return from space',      hk: ['回歸', '由太空返嚟'], tw: ['返回', '從太空返回'] },
+  { t: 8,  jp: ['降下', '腹ばい降下'],         en: 'Belly-flop',             hk: ['降落', '打橫跌落嚟'], tw: ['下降', '平躺下降'] },
+  { t: 36, jp: ['反転', '姿勢反転'],           en: 'Flip',                   hk: ['翻身', '翻身企直'],   tw: ['翻轉', '翻身站直'] },
+  { t: 41, jp: ['噴射', '着陸噴射'],           en: 'Landing burn',           hk: ['噴墨', '噴墨減速'],   tw: ['噴墨', '噴墨減速'] },
+  { t: 54, jp: ['捕獲', '箸で捕獲'],           en: 'Catch',                  hk: ['夾住', '筷子夾住'],   tw: ['捕獲', '筷子夾住'] },
+  { t: 60, jp: ['抱擁', 'タワーに抱きつく'],   en: 'Hug',                    hk: ['攬住', '攬住座塔'],   tw: ['擁抱', '抱住鐵塔'] },
+  { t: 72, jp: ['余韻', '余韻'],               en: 'Aftermath',              hk: ['餘韻', '餘韻'],       tw: ['餘韻', '餘韻'] },
+];
+// English keeps the kanji as the big label (the film's look) with the English line under it
+function phaseText(p) { return lang === 'en' ? [p.jp[0], p.en] : [p[lang][0], p[lang][1]]; }
+function update(t) {
+  const S = shipState(t, state);
+  const sq = CONFIG.squid.intensity;
+  ship.position.copy(S.pos); ship.quaternion.copy(S.quat);
+  bodyU.uTime.value = t; bodyU.uSquid.value = sq; bodyU.uExcite.value = exciteAt(t);
+  const heat = heatAt(t); bodyU.uHeat.value = heat; bodyU.uCalm.value = calmAt(t);
+  bodyMat.clearcoat = sq * 0.75;
+  flameU.uTime.value = t;
+
+  // flaps / fins
+  const belly = 1 - sstep(36, 39, t);
+  const defF = belly * (15 * DEG + 10 * DEG * Math.sin(1.3 * t)) + (1 - belly) * 45 * DEG;
+  const defA = belly * (8 * DEG + 7 * DEG * Math.sin(1.1 * t + 1)) + (1 - belly) * 30 * DEG;
+  flapMat.color.copy(FLAP_DARK).lerp(FIN_COL, sq);
+  flaps[0].update(sq, t, defF); flaps[1].update(sq, t, defF);
+  flaps[2].update(sq, t, defA); flaps[3].update(sq, t, defA);
+  const eyeS = Math.max(0.001, sstep(0.3, 0.7, sq));
+  eyes.forEach((e) => e.scale.setScalar(eyeS));
+  siphon.scale.setScalar(Math.max(0.001, sstep(0.12, 0.5, sq)));
+
+  // flame + glows
+  const thr = S.throttle;
+  flame.visible = thr > 0.01;
+  flame.scale.set(1, (32 + 4 * Math.sin(t * 23)) * (0.6 + 0.4 * thr) * lerp(1, 0.75, sq), 1);
+  flameU.uThrottle.value = thr;
+  nozzleGlow.material.opacity = thr; nozzleGlow.scale.setScalar(11 * thr + 0.01);
+  flameLight.intensity = 26000 * thr;
+  plasma.material.opacity = heat * 0.7; plasma.visible = heat > 0.01;
+
+  // carriage + chopsticks
+  const tau = t - T_CONTACT;
+  carriage.position.set(0, CONFIG.tower.catchHeight + S.carriageDy, 0);
+  const beta = lerp(48 * DEG, -1.5 * DEG, sstep(52.5, 57, t));
+  const flex = tau > 0 ? -0.4 * DEG * Math.exp(-1.8 * tau) * Math.sin(2 * Math.PI * 1.1 * tau) : 0;
+  for (const pv of pivots) pv.rotation.set(0, Math.PI + pv.userData.side * beta, flex);
+  const useWood = CONFIG.squid.chopstickStyle === 'wood' && sq >= 0.15;
+  for (const m of chopMeshes) m.material = useWood ? woodMat : trussMat;
+
+  updateLimbs(t, S, sq);
+
+  // wires
+  wires.visible = CONFIG.squid.showWires;
+  if (wires.visible) {
+    const a = wireGeo.attributes.position.array;
+    const pts = [new V3(0, SHIP_L - COM, 0).applyQuaternion(S.quat).add(S.pos)];
+    for (const i of [0, 3, 5, 8]) pts.push(limbs[i].spine[30].clone());
+    pts.forEach((p, i) => { a.set([p.x, p.y, p.z, p.x, p.y + 900, p.z], i * 6); });
+    wireGeo.attributes.position.needsUpdate = true;
+  }
+
+  // particles
+  inkMat.uniforms.uTime.value = t; glowMat.uniforms.uTime.value = t;
+  inkMat.uniforms.uClear.value = sstep(52, 57, t) * (1 - sstep(76, 84, t));
+  inkMat.uniforms.uDensity.value = CONFIG.squid.inkDensity * (MOBILE ? 0.5 : 1);
+  inkMat.uniforms.uSquid.value = sq; inkMat.uniforms.uInkOn.value = CONFIG.squid.ink ? 1 : 0;
+  skyUniforms.uTime.value = t;
+
+  updateCamera(t);
+  sky.position.copy(camera.position);
+
+  // ops log
+  hud.t.textContent = fmt(t);
+  hud.alt.textContent = Math.max(0, S.pos.y).toFixed(0) + ' m';
+  hud.vs.textContent = (S.vel.y >= 0 ? '+' : '−') + Math.abs(S.vel.y).toFixed(1) + ' m/s';
+  let ph = PHASES[0]; for (const p of PHASES) if (t >= p.t) ph = p;
+  const pt = phaseText(ph);
+  if (hud.phaseJp.textContent !== pt[0] || hud.phaseEn.textContent !== pt[1]) { hud.phaseJp.textContent = pt[0]; hud.phaseEn.textContent = pt[1]; }
+  const rate = rateAt(t);
+  hud.slow.hidden = !(rate < 0.9 && playing);
+  hud.slowF.textContent = '×' + CONFIG.timeline.slowMoFactor.toFixed(2).replace(/0$/, '');
+  tRead.textContent = fmt(t);
+  if (!scrubbing) scrub.value = t.toFixed(2);
+}
+function fmt(t) { const m = Math.floor(t / 60), s = t - m * 60; return String(m).padStart(2, '0') + ':' + s.toFixed(1).padStart(4, '0'); }
+
+// ============================================================================
+// LANGUAGES (EN · 港 · 繁 · 日), shared choice with the rest of Pocket Arcade
+// ============================================================================
+let lang = window.Arcade ? Arcade.pickLang() : 'en';
+const TXT = {
+  en: { logT: '捕獲作戦 記録', logS: 'Ops log', alt: 'Altitude <small>ALT</small>', vs: 'Descent <small>V/S</small>', slow: 'Slow motion',
+        play: 'Play', pause: 'Pause', scrub: 'Timeline position', speed: 'Playback speed', cams: 'Camera', langs: 'Language',
+        cam: ['Video match', 'Kaiju low', 'Tower cam', 'Chase', 'Free orbit'], ref: '10:26 frame', refT: 'Jump to the frame matched to the video at 10:26 and pause',
+        kick: '特撮スペクタクル', t1: '大イカ', t2: '捕獲作戦', skip: 'Click to skip', title: 'Kaiju Catch 3D' },
+  hk: { logT: '捕捉行動 紀錄', logS: 'OPS LOG', alt: '高度 <small>ALT</small>', vs: '下降速度 <small>V/S</small>', slow: '慢鏡',
+        play: '播放', pause: '暫停', scrub: '時間軸', speed: '播放速度', cams: '鏡頭', langs: '語言',
+        cam: ['原片角度', '怪獸低角', '塔頂鏡頭', '追蹤', '自由視角'], ref: '10:26 畫面', refT: '跳去同原片 10:26 對應嘅畫面並暫停',
+        kick: '特攝巨獻', t1: '野生捕捉', t2: '大魷魚', skip: '撳一下跳過', title: '野生捕捉 大魷魚 3D' },
+  tw: { logT: '捕獲作戰 紀錄', logS: 'OPS LOG', alt: '高度 <small>ALT</small>', vs: '下降速率 <small>V/S</small>', slow: '慢動作',
+        play: '播放', pause: '暫停', scrub: '時間軸', speed: '播放速度', cams: '鏡頭', langs: '語言',
+        cam: ['原片角度', '怪獸低角度', '塔頂鏡頭', '追蹤', '自由視角'], ref: '10:26 畫面', refT: '跳到對應原片 10:26 的畫面並暫停',
+        kick: '特攝巨獻', t1: '大烏賊', t2: '捕獲大作戰', skip: '點一下跳過', title: '大烏賊 捕獲大作戰 3D' },
+  jp: { logT: '捕獲作戦 記録', logS: 'OPS LOG', alt: '高度 <small>ALT</small>', vs: '降下率 <small>V/S</small>', slow: '高速度撮影',
+        play: '再生', pause: '一時停止', scrub: 'タイムライン', speed: '再生速度', cams: 'カメラ', langs: '言語',
+        cam: ['映像合わせ', '怪獣ローアングル', 'タワーカメラ', '追跡', 'フリー視点'], ref: '10:26 の場面', refT: '動画 10:26 に合わせた場面へ移動して一時停止',
+        kick: '特撮スペクタクル', t1: '大イカ', t2: '捕獲作戦', skip: 'クリックでスキップ', title: '大イカ 捕獲作戦 3D' },
+};
+// settings panel labels, keyed by the English label each control is created with
+const GUI_TX = {
+  'Controls · 撮影設定': ['控制 · 拍攝設定', '控制 · 拍攝設定', '撮影設定'], 'Film look 映像': ['畫面風格', '畫面風格', '映像'],
+  'Look': ['風格', '風格', 'ルック'], 'Grain': ['菲林顆粒', '底片顆粒', '粒子'], 'Halation': ['光暈', '光暈', 'ハレーション'],
+  'Gate weave (px)': ['畫面晃動 (px)', '畫面晃動 (px)', 'ゲート揺れ (px)'], 'Dust & scratches': ['塵埃同花痕', '灰塵與刮痕', 'ゴミ・傷'],
+  'Aspect': ['畫面比例', '畫面比例', '画面比'], '24 fps judder': ['24 格頓挫感', '24 格頓挫感', '24コマのカクつき'],
+  'Director cuts': ['導演剪接', '導演剪接', 'ディレクターカット'], 'Slow-mo factor': ['慢鏡倍率', '慢動作倍率', 'スロー倍率'],
+  'Squid 烏賊': ['魷魚', '烏賊', 'イカ'], 'Squid intensity': ['魷魚程度', '烏賊程度', 'イカらしさ'], 'Arms & tentacles': ['腕同觸鬚', '腕與觸手', '腕と触腕'],
+  'Ink': ['墨汁', '墨汁', '墨'], 'Ink density': ['墨汁濃度', '墨汁濃度', '墨の濃さ'], 'Chopsticks': ['筷子', '筷子', '箸'],
+  'Hug the tower': ['攬住座塔', '抱住鐵塔', 'タワーに抱きつく'], 'Hug turns': ['攬塔圈數', '擁抱圈數', '巻きつき回数'], 'Puppet wires': ['吊威也', '吊鋼絲', '操演ワイヤー'],
+  'Camera': ['鏡頭', '鏡頭', 'カメラ'], 'Preset': ['預設', '預設', 'プリセット'], 'Azimuth (°)': ['方位角 (°)', '方位角 (°)', '方位角 (°)'],
+  'Distance (m)': ['距離 (m)', '距離 (m)', '距離 (m)'], 'Height (m)': ['高度 (m)', '高度 (m)', '高さ (m)'], 'Pad FOV (°)': ['發射台視角 (°)', '發射台視角 (°)', '発射台画角 (°)'],
+  'Horizon (% from top)': ['地平線（距頂 %）', '地平線（距頂 %）', '地平線（上から %）'], 'Tower (% from left)': ['座塔（距左 %）', '鐵塔（距左 %）', 'タワー（左から %）'],
+  'Scene': ['場景', '場景', 'シーン'], 'Sun elevation': ['太陽高度', '太陽高度', '太陽高度'], 'Sun azimuth': ['太陽方位', '太陽方位', '太陽方位'],
+  'Catch height (m)': ['夾位高度 (m)', '捕獲高度 (m)', '捕獲高度 (m)'], 'Flip altitude (m)': ['翻身高度 (m)', '翻轉高度 (m)', '反転高度 (m)'],
+  'Lateral divert (m)': ['橫移距離 (m)', '橫移距離 (m)', '横移動 (m)'], 'Return-from-space intro': ['太空回歸開場', '太空返回開場', '宇宙帰還オープニング'],
+};
+const TX = (k) => TXT[lang][k];
+function guiLabel(en) { const r = GUI_TX[en]; return lang === 'en' || !r ? en : r[{ hk: 0, tw: 1, jp: 2 }[lang]]; }
+function applyLang() {
+  const L = TXT[lang], $$ = (id) => document.getElementById(id);
+  document.documentElement.lang = window.Arcade ? Arcade.htmlLang(lang) : 'en';
+  document.title = L.title + ' · Pocket Arcade';
+  $$('lLogT').textContent = L.logT; $$('lLogS').textContent = L.logS;
+  $$('lAlt').innerHTML = L.alt; $$('lVs').innerHTML = L.vs; $$('lSlow').textContent = L.slow;
+  $$('scrub').setAttribute('aria-label', L.scrub); $$('lSpeed').textContent = L.speed;
+  document.querySelector('.cams').setAttribute('aria-label', L.cams); document.querySelector('.langs').setAttribute('aria-label', L.langs);
+  document.querySelectorAll('[data-cam-label]').forEach((s, i) => { s.textContent = L.cam[i]; });
+  $$('ref').textContent = L.ref; $$('ref').title = L.refT;
+  $$('tcKick').textContent = L.kick; $$('tcT1').textContent = L.t1; $$('tcT2').textContent = L.t2; $$('tcSkip').textContent = L.skip;
+  document.querySelectorAll('.lg').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.lang === lang)));
+  if (typeof buildTicks === 'function') buildTicks();
+  if (typeof playBtn !== 'undefined') playBtn.setAttribute('aria-label', TX(playing ? 'pause' : 'play'));
+  if (typeof gui !== 'undefined') {
+    [gui, ...gui.foldersRecursive()].forEach((f) => { f.__en = f.__en || f._title; f.title(guiLabel(f.__en)); });
+    gui.controllersRecursive().forEach((c) => { c.__en = c.__en || c._name; c.name(guiLabel(c.__en)); });
+  }
+  dirty = true;
+}
+document.querySelectorAll('.lg').forEach((b) => b.addEventListener('click', () => {
+  lang = b.dataset.lang; if (window.Arcade) Arcade.setLang(lang); applyLang(); b.blur();
+}));
+
+// ============================================================================
+// UI
+// ============================================================================
+const $ = (id) => document.getElementById(id);
+const hud = { t: $('hT'), alt: $('hAlt'), vs: $('hVs'), phaseJp: $('hPhaseJp'), phaseEn: $('hPhaseEn'), slow: $('hSlow'), slowF: $('hSlowF') };
+const tRead = $('tRead'), scrub = $('scrub'), playBtn = $('play'), speedSel = $('speed');
+scrub.max = String(CONFIG.timeline.duration);
+const ticks = $('ticks');
+function buildTicks() {
+  ticks.textContent = '';
+  for (const p of PHASES) {
+    const d = document.createElement('div'); d.className = 'tick'; const pt = phaseText(p);
+    d.style.left = (p.t / CONFIG.timeline.duration * 100) + '%'; d.textContent = pt[0]; d.title = pt[1];
+    ticks.appendChild(d);
+  }
+}
+let t = clamp(parseFloat(QS.get('t') ?? CONFIG.timeline.startAt) || 0, 0, CONFIG.timeline.duration);
+let playing = !REDUCED && !QS.has('paused');
+let scrubbing = false;
+let dirty = true;
+let idleTimer = 0;
+function wake() {
+  document.body.classList.remove('idle');
+  clearTimeout(idleTimer);
+  idleTimer = setTimeout(() => { if (playing && !titleActive) document.body.classList.add('idle'); }, 3200);
+}
+['pointermove', 'pointerdown', 'keydown', 'touchstart'].forEach((ev) => addEventListener(ev, wake, { passive: true }));
+function setPlaying(p) { playing = p; playBtn.textContent = p ? '❚❚' : '▶'; playBtn.setAttribute('aria-label', TX(p ? 'pause' : 'play')); dirty = true; wake(); }
+setPlaying(playing);
+playBtn.addEventListener('click', () => setPlaying(!playing));
+scrub.addEventListener('input', () => { scrubbing = true; t = parseFloat(scrub.value); dirty = true; });
+scrub.addEventListener('change', () => { scrubbing = false; });
+speedSel.addEventListener('change', () => { CONFIG.timeline.timeScale = parseFloat(speedSel.value); });
+const camButtons = [...document.querySelectorAll('[data-cam]')];
+let camCtrl = null;
+function setPreset(name) {
+  CONFIG.camera.preset = name;
+  camButtons.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.cam === name)));
+  if (camCtrl) camCtrl.updateDisplay();
+  dirty = true;
+}
+camButtons.forEach((b) => b.addEventListener('click', () => setPreset(b.dataset.cam)));
+$('ref').addEventListener('click', () => { setPreset('VIDEO_MATCH'); t = REF_T; setPlaying(false); });
+if (QS.get('cam')) setPreset(QS.get('cam'));
+
+let lastSquid = CONFIG.squid.intensity || 0.9;
+addEventListener('keydown', (e) => {
+  const tag = (e.target && e.target.tagName) || '';
+  const inField = tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA';
+  if (e.code === 'Space' && !inField && tag !== 'BUTTON') { e.preventDefault(); setPlaying(!playing); return; }
+  if (inField) return;
+  const presets = ['VIDEO_MATCH', 'KAIJU_LOW', 'TOWER_CAM', 'CHASE', 'FREE'];
+  if (e.key >= '1' && e.key <= '5') { setPreset(presets[+e.key - 1]); return; }
+  if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { t = clamp(t + (e.key === 'ArrowLeft' ? -2 : 2), 0, CONFIG.timeline.duration); dirty = true; e.preventDefault(); return; }
+  const k = e.key.toLowerCase();
+  if (k === 's') { if (CONFIG.squid.intensity > 0) { lastSquid = CONFIG.squid.intensity; CONFIG.squid.intensity = 0; } else CONFIG.squid.intensity = lastSquid; dirty = true; }
+  if (k === 'f') { CONFIG.style.look = CONFIG.style.look === 'tokusatsu' ? 'clean' : 'tokusatsu'; applyLook(); }
+  if (k === 'c') { CONFIG.style.directorCuts = !CONFIG.style.directorCuts; dirty = true; }
+  gui.controllersRecursive().forEach((c) => c.updateDisplay());
+});
+
+// settings panel
+const gui = new GUI({ title: 'Controls · 撮影設定', width: 268 });
+const fFilm = gui.addFolder('Film look 映像');
+fFilm.add(CONFIG.style, 'look', ['tokusatsu', 'clean']).name('Look').onChange(applyLook);
+fFilm.add(CONFIG.style, 'grain', 0, 1, 0.01).name('Grain');
+fFilm.add(CONFIG.style, 'halation', 0, 1.5, 0.01).name('Halation');
+fFilm.add(CONFIG.style, 'gateWeavePx', 0, 4, 0.1).name('Gate weave (px)');
+fFilm.add(CONFIG.style, 'dustScratches').name('Dust & scratches');
+fFilm.add(CONFIG.style, 'aspect', ['2.35', '1.85', '4:3', 'full']).name('Aspect').onChange(resize);
+fFilm.add(CONFIG.style, 'fps24').name('24 fps judder');
+fFilm.add(CONFIG.style, 'directorCuts').name('Director cuts');
+fFilm.add(CONFIG.timeline, 'slowMoFactor', 0.2, 1, 0.05).name('Slow-mo factor');
+const fSq = gui.addFolder('Squid 烏賊');
+fSq.add(CONFIG.squid, 'intensity', 0, 1, 0.01).name('Squid intensity');
+fSq.add(CONFIG.squid, 'tentacles').name('Arms & tentacles');
+fSq.add(CONFIG.squid, 'ink').name('Ink');
+fSq.add(CONFIG.squid, 'inkDensity', 0, 2, 0.05).name('Ink density');
+fSq.add(CONFIG.squid, 'chopstickStyle', ['wood', 'truss']).name('Chopsticks');
+fSq.add(CONFIG.squid, 'hug').name('Hug the tower');
+fSq.add(CONFIG.squid, 'hugTurns', 0.5, 2, 0.05).name('Hug turns');
+fSq.add(CONFIG.squid, 'showWires').name('Puppet wires');
+const fCam = gui.addFolder('Camera');
+camCtrl = fCam.add(CONFIG.camera, 'preset', ['VIDEO_MATCH', 'KAIJU_LOW', 'TOWER_CAM', 'CHASE', 'FREE']).name('Preset').onChange(setPreset);
+fCam.add(CONFIG.camera, 'azimuthDeg', -60, 60, 0.5).name('Azimuth (°)');
+fCam.add(CONFIG.camera, 'distance', 800, 4000, 10).name('Distance (m)');
+fCam.add(CONFIG.camera, 'height', 2, 300, 1).name('Height (m)');
+fCam.add(CONFIG.camera, 'vfovPadDeg', 8, 30, 0.1).name('Pad FOV (°)');
+fCam.add(CONFIG.camera, 'horizonPct', 50, 95, 0.5).name('Horizon (% from top)');
+fCam.add(CONFIG.camera, 'towerXPct', 20, 80, 0.5).name('Tower (% from left)');
+const fScene = gui.addFolder('Scene');
+fScene.add(CONFIG.sun, 'elevationDeg', 5, 70, 0.5).name('Sun elevation').onChange(updateSun);
+fScene.add(CONFIG.sun, 'azimuthDeg', 0, 360, 1).name('Sun azimuth').onChange(updateSun);
+const rebuild = () => { buildKeys(); buildParticles(); dirty = true; };
+fScene.add(CONFIG.tower, 'catchHeight', 100, 128, 0.5).name('Catch height (m)').onFinishChange(rebuild);
+fScene.add(CONFIG.descent, 'flipAlt', 450, 900, 10).name('Flip altitude (m)').onFinishChange(rebuild);
+fScene.add(CONFIG.descent, 'lateralDivert', 20, 120, 1).name('Lateral divert (m)').onFinishChange(rebuild);
+fScene.add(CONFIG.timeline, 'spaceIntro').name('Return-from-space intro').onChange(() => { buildParticles(); dirty = true; });
+fFilm.close(); fCam.close(); fScene.close();
+if (innerWidth < 900) gui.close();
+gui.onChange(() => { dirty = true; });
+
+function applyLook() {
+  const on = CONFIG.style.look === 'tokusatsu';
+  film.uniforms.uOn.value = on ? 1 : 0;
+  resize();
+}
+
+// title card
+const tc = $('titleCard');
+let titleActive = false;
+function endTitle() {
+  if (!titleActive) return;
+  titleActive = false; tc.classList.add('out');
+  setTimeout(() => { tc.hidden = true; }, 600);
+}
+if (CONFIG.style.titleCard && !REDUCED && !QS.has('notitle') && !QS.has('t')) {
+  titleActive = true; tc.hidden = false;
+  setTimeout(endTitle, 3400);
+  tc.addEventListener('click', endTitle);
+}
+if (REDUCED && !QS.has('t')) t = REF_T;
+applyLang();
+
+// ============================================================================
+// RESIZE + LOOP
+// ============================================================================
+function resize() {
+  const W = innerWidth, H = innerHeight, a = W / H;
+  renderer.setSize(W, H); composer.setSize(W, H);
+  const pr = renderer.getPixelRatio();
+  film.uniforms.uRes.value.set(W * pr, H * pr);
+  camera.aspect = a;
+  const on = CONFIG.style.look === 'tokusatsu';
+  const map = { full: a, '1.85': 1.85, '2.35': 2.35, '4:3': 4 / 3 };
+  let target = map[CONFIG.style.aspect] ?? a;
+  if (!on || a < 1.0) target = a;
+  const box = film.uniforms.uBox.value;
+  bandFrac = 1; bandAspect = a; box.set(0, 0, 1, 1);
+  if (target > a + 1e-3) { const h = a / target; box.set(0, (1 - h) / 2, 1, 1 - (1 - h) / 2); bandFrac = h; bandAspect = target; }
+  else if (target < a - 1e-3) { const w = target / a; box.set((1 - w) / 2, 0, 1 - (1 - w) / 2, 1); bandAspect = target; }
+  camera.updateProjectionMatrix();
+  if (CONFIG.camera.preset === 'FREE') { camera.fov = 2 * Math.atan(Math.tan(36 * DEG / 2) / bandFrac) / DEG; camera.updateProjectionMatrix(); }
+  dirty = true;
+}
+addEventListener('resize', resize);
+
+buildKeys();
+buildParticles();
+resize();
+applyLook();
+
+let last = performance.now(), acc = 0, wall = 0;
+function frame(now) {
+  requestAnimationFrame(frame);
+  const dt = Math.min(0.1, (now - last) / 1000); last = now;
+  if (document.hidden) return;
+  wall += dt;
+  if (playing && !titleActive && !scrubbing) {
+    t += dt * CONFIG.timeline.timeScale * rateAt(t);
+    if (t >= CONFIG.timeline.duration) {
+      if (CONFIG.timeline.loop) t = CONFIG.timeline.spaceIntro ? 0 : 8;
+      else { t = CONFIG.timeline.duration; setPlaying(false); }
+    }
+    dirty = true;
+  }
+  const on = CONFIG.style.look === 'tokusatsu';
+  const cadence = on && CONFIG.style.fps24 && !REDUCED ? 1 / 24 : 0;
+  acc += dt;
+  if (cadence && acc < cadence) return;
+  acc = cadence ? acc % cadence : 0;
+  // film grain keeps moving even when paused; the scene itself only changes when dirty
+  film.uniforms.uFrame.value = Math.floor(wall * 24);
+  film.uniforms.uGrain.value = CONFIG.style.grain;
+  film.uniforms.uHal.value = CONFIG.style.halation;
+  film.uniforms.uWeave.value = REDUCED ? 0 : CONFIG.style.gateWeavePx;
+  film.uniforms.uDust.value = CONFIG.style.dustScratches ? 1 : 0;
+  if (dirty || CONFIG.camera.preset === 'FREE') { update(t); dirty = playing; }
+  composer.render();
+}
+window.__ikaReady = true;
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
