@@ -15,18 +15,32 @@ Available in English, 港 (Hong Kong, Cantonese), 繁 (Taiwan) and 日 (Japanese
 
 ### Wild Catch · 野生捕捉 大魷魚
 
-![Wild Catch: the squid caught between the tower's chopsticks](og/wild-catch.jpg)
+![Wild Catch: the squid drops toward the tower's chopsticks](og/wild-catch.jpg)
 
 *Turn. Jet ink. Get caught.* A giant squid falls back from space, belly first. Turn it, jet ink to brake,
 and let the tower's chopsticks catch it. The tips only grip a squid that is
 upright and slow.
 
-- **Controls:** `←` `→` to turn, `↑` or `Space` to jet ink. On a phone, use the
-  on-screen buttons.
-- **Score:** points for each catch, a bonus for a soft catch, and a new level
-  after every catch.
-- **Challenge:** at game over you get a score card and a link. A friend who
-  opens it plays against your score.
+- **Seven levels**, each with its own twist:
+
+  | Level | Twist |
+  | --- | --- |
+  | 1 · Calm | Learn the controls |
+  | 2 · Breeze | A side wind, and the press is waiting with cameras |
+  | 3 · Wild wind | Wind that wanders in every direction |
+  | 4 · Squalls | Gusts that snap between dead calm and +70% |
+  | 5 · Clogged jet | One of three ink jets is blocked: less thrust, and the squid twists |
+  | 6 · Fog and laser | Sudden fog; a blue laser from the tower head shows where it stands |
+  | 7 · Dancing chopsticks | The chopsticks ride up and down the tower; match their speed |
+
+- **Controls:** `←` `→` to turn, `↑` or `Space` to jet ink. On a phone: left
+  thumb on ↺ ↻ (slide between them), right thumb on the jet button.
+- **Score:** points for each catch and a bonus for a soft catch. Lose all three
+  squids and you can continue on the same level (the score restarts) or start
+  again from level 1.
+- **Challenge:** you get a score card and a link that says how many levels you
+  cleared and which ones are still to beat. A friend who opens it plays against
+  your score.
 
 ### Kaiju Catch 3D · Operation: Giant Squid
 
