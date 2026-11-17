@@ -4,3 +4,5 @@ package.json
 package-lock.json
 .github
 .claude
+README.md
+og/*.png
