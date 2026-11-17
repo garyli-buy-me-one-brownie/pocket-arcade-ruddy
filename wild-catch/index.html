@@ -89,6 +89,32 @@ canvas { width: 100%; height: 100%; object-fit: contain; display: block; }
 .wa:hover { background: rgba(37, 211, 102, 0.16); border-color: #4fdc84; }
 .th:hover { background: rgba(236, 230, 214, 0.1); border-color: var(--paper); }
 .card { display: block; width: 100%; aspect-ratio: 1200 / 630; border: 1px solid var(--rule); background: #000; }
+.lvls { display: grid; gap: 6px; padding: 10px 0 2px; border-top: 1px solid var(--rule); }
+.lvls > p { margin: 0; }
+.lvls ol { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 4px 12px; text-align: left; font-size: 13px; }
+.lvls li { display: flex; align-items: baseline; gap: 6px; color: var(--paper-dim); }
+.lvls li b { min-width: 1.1em; color: var(--amber); font-variant-numeric: tabular-nums; }
+.lvls li.done { color: var(--paper); }
+.lvls li.done::after { content: '✓'; margin-left: auto; color: #8fd08a; }
+.lvls .rec { margin: 0; font-size: 13px; color: var(--amber); }
+/* Phones: two-thumb pad. Left thumb turns (↺ ↻ side by side), right thumb holds the big ink jet. No keyboard hints, no zoom or text selection. */
+@media (pointer: coarse) {
+  html, body { overscroll-behavior: none; }
+  body { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+  .stage, .pad { touch-action: none; }
+  .pad { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.7fr); grid-template-areas: "l r u"; gap: 8px; }
+  #bL { grid-area: l; } #bR { grid-area: r; } #bU { grid-area: u; }
+  .pad .btn { height: 72px; font-size: 17px; }
+  .pad .btn small { display: none; }
+}
+/* Phone on its side: the film frame fills the height, the buttons sit in the empty space either side of it. */
+@media (pointer: coarse) and (orientation: landscape) and (max-height: 540px) {
+  .pad {
+    position: fixed; left: max(16px, env(safe-area-inset-left, 0px)); right: max(16px, env(safe-area-inset-right, 0px)); bottom: max(12px, env(safe-area-inset-bottom, 0px));
+    width: auto; margin: 0; grid-template-columns: 84px 84px 1fr 132px; grid-template-areas: "l r . u"; pointer-events: none;
+  }
+  .pad .btn { pointer-events: auto; height: 84px; }
+}
 </style>
 
 </head>
@@ -109,9 +135,15 @@ canvas { width: 100%; height: 100%; object-fit: contain; display: block; }
     <h1 id="pTitle"></h1>
     <p id="pText"></p>
     <p class="dim" id="pSub"></p>
+    <div class="lvls" id="pLv" hidden>
+      <p class="dim" id="pLvT"></p>
+      <ol id="pLvList"></ol>
+      <p class="rec" id="pRec"></p>
+    </div>
     <p class="chal" id="pChal" hidden></p>
     <img class="card" id="pCard" alt="" hidden>
     <button class="btn go" id="pBtn"></button>
+    <button class="btn sm" id="pBtn2" hidden></button>
     <div class="share" id="pRow" hidden>
       <p class="dim" id="pShareT"></p>
       <div class="row">
@@ -130,19 +162,22 @@ canvas { width: 100%; height: 100%; object-fit: contain; display: block; }
   <div class="hint" id="hint" hidden></div>
 </div>
 <div class="pad" role="group" aria-label="Controls">
-  <button class="btn" id="bL" aria-label="Turn left"></button>
-  <button class="btn" id="bU" aria-label="Jet ink"></button>
-  <button class="btn" id="bR" aria-label="Turn right"></button>
+  <button class="btn" id="bL" data-k="l" aria-label="Turn left"></button>
+  <button class="btn" id="bU" data-k="u" aria-label="Jet ink"></button>
+  <button class="btn" id="bR" data-k="r" aria-label="Turn right"></button>
 </div>
 
 <script src="../shared/arcade.js"></script>
 <script>
 (function () {
-  var W = 480, H = 720, GROUND = 668, ARM_Y = 300;
-  var TOWER_X = 340, TOWER_W = 40, TOWER_TOP = 150, RAD = 14, HALF = 50;
+  var W = 480, H = 720, GROUND = 668, ARM_Y = 383;                                 // chopsticks sit 46 px below the tower top
+  var TOWER_X = 340, TOWER_W = 40, TOWER_TOP = 337, RAD = 14, HALF = 50;            // two 20 % cuts from the original, so a squid from the right can clear it
   var ZONE0 = 150, ZONE1 = 314, STICK = 250;
   var G = 60, JET = 170, TURN = 2.9, SAFE_VY = 50, SAFE_VX = 38, SAFE_A = 0.35;
+  var MAX_LV = 7;                                                                 // clearing level 7 completes the game
+  var CLOG_TWIST = 0.75;                                                          // spin (rad/s) while jetting with a clogged side jet
   var REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var TOUCH = matchMedia('(pointer: coarse)').matches;                           // phones and tablets
   var DISPLAY = '"Hiragino Mincho ProN", "Yu Mincho", "Noto Serif JP", "Noto Serif CJK TC", "Songti TC", serif';
   var BASE_UI = getComputedStyle(document.body).fontFamily, UI = BASE_UI;
 
@@ -164,9 +199,9 @@ canvas { width: 100%; height: 100%; object-fit: contain; display: block; }
       bonus: ' (soft catch +50)', caughtSub: 'Speed {0}　Ink left {1}%　Score ' + N + '{2}' + E, next: 'Next level',
       lv: 'Level {0}', pts: '{0} pts', ink: 'Ink', speed: 'Speed', ok: 'OK', fast: 'FAST', pose: 'Tilt', upright: 'Upright', tilt: '{0}°',
       wind: 'Wind', calm: 'Calm', best: 'Best {0}', capStat: 'Speed {0}　Ink left {1}%',
-      post: '🎮 WILD CATCH — Can You Beat My Score?\n\nI just caught a GIANT SQUID! 🦑\n\n🏆 Score: {0}\n🎯 Level: {1}\n🔥 Think you can do better?\n\nYour turn. Give it a try and challenge your friends!\n{2}\n\n#WildCatch #PocketArcade #BeatMyScore',
-      postMiss: '🎮 WILD CATCH — Can You Beat My Score?\n\nThe giant squid got away from me! 🦑\n\n🏆 Score: {0}\n🎯 Level: {1}\n🔥 Think you can do better?\n\nYour turn. Give it a try and challenge your friends!\n{2}\n\n#WildCatch #PocketArcade #BeatMyScore',
-      noShot: 'Could not make the photo. Try photo mode.', saved: 'Photo saved.', noShare: 'Sharing is not available here. Use Copy score.', copied: 'Copied: {0}'
+      post: '🎮 WILD CATCH — Can You Beat My Score?\n\nI just caught a GIANT SQUID! 🦑\n\n🏆 Score: {0}\n🎯 Cleared: {1}/{4} levels\n{3}\n🔥 Think you can do better?\n\nYour turn. Give it a try and challenge your friends!\n{2}\n\n#WildCatch #PocketArcade #BeatMyScore',
+      postMiss: '🎮 WILD CATCH — Can You Beat My Score?\n\nThe giant squid got away from me! 🦑\n\n🏆 Score: {0}\n🎯 Cleared: {1}/{4} levels\n{3}\n🔥 Think you can do better?\n\nYour turn. Give it a try and challenge your friends!\n{2}\n\n#WildCatch #PocketArcade #BeatMyScore',
+      noShot: 'Could not make the photo. Try photo mode.', saved: 'Photo saved.', noShare: 'Sharing is not available here. Use Copy score.', copied: 'Copied: {0}', jets: 'Jets', clog: 'clogged', tw3: 'Wild wind from every side!', tw4: 'Squalls: gusts, then dead calm!', tw5: 'One ink jet is clogged!', tw6: 'Sudden fog! Follow the blue laser', tw7: 'Final level: dancing chopsticks!', cont: 'Continue on level {0}', fromStart: 'Restart from level 1', lvTitle: '{0} levels', bestRec: 'Best: {0} pts · reached level {1}', recAll: 'Best: {0} pts · all {1} levels cleared', noRec: 'No record yet. Catch your first squid!', contNote: 'Continuing keeps your level; the score starts again from 0.', keysT: 'Left thumb: ↺ ↻ to turn (slide between them). Right thumb: hold Ink jet.<br>Falling flat is slow and saves ink, but the chopsticks only grip an ika that is upright and slow.', names: ['Calm', 'Breeze', 'Wild wind', 'Squalls', 'Clogged jet', 'Fog and laser', 'Dancing chopsticks'], clr: 'Cleared {0}/{1}', remain: '🔓 Still to beat: {0}', allClear: '👑 All {0} levels cleared!', allB: 'ALL CLEAR!', allT: 'All levels cleared!', allText: 'Even the dancing chopsticks could not stop you. Seven levels, one wild squid.<br>' + N + '+{0}' + E + ' pts'
     },
     hk: {
       title: '野生捕捉 大魷魚',
@@ -183,9 +218,9 @@ canvas { width: 100%; height: 100%; object-fit: contain; display: block; }
       bonus: '（輕落獎勵 +50）', caughtSub: '落速 {0}　剩墨 {1}%　總分 ' + N + '{2}' + E, next: '下一關',
       lv: '第 {0} 關', pts: '{0} 分', ink: '墨', speed: '落速', ok: '可夾', fast: '太快', pose: '姿勢', upright: '企直', tilt: '斜 {0}°',
       wind: '風', calm: '無風', best: '最高 {0}', capStat: '落速 {0}　剩墨 {1}%',
-      post: '🦑 野生捕捉 — 你能打破我的紀錄嗎？\n\n我啱啱捉到一條大魷魚！\n\n🏆 分數：{0}\n🎯 關卡：第 {1} 關\n\n你有信心捉得比我更好嗎？\n{2}\n\n#WildCatch #PocketArcade #BeatMyScore #野生捕捉',
-      postMiss: '🦑 野生捕捉 — 你能打破我的紀錄嗎？\n\n條大魷魚走甩咗！\n\n🏆 分數：{0}\n🎯 關卡：第 {1} 關\n\n你有信心捉得比我更好嗎？\n{2}\n\n#WildCatch #PocketArcade #BeatMyScore #野生捕捉',
-      noShot: '整唔到相，試吓影相模式。', saved: '已儲存相片。', noShare: '呢度分享唔到，用「複製戰績」啦。', copied: '已複製：{0}'
+      post: '🦑 野生捕捉 — 你能打破我的紀錄嗎？\n\n我啱啱捉到一條大魷魚！\n\n🏆 分數：{0}\n🎯 過關：{1}/{4} 關\n{3}\n\n你有信心捉得比我更好嗎？\n{2}\n\n#WildCatch #PocketArcade #BeatMyScore #野生捕捉',
+      postMiss: '🦑 野生捕捉 — 你能打破我的紀錄嗎？\n\n條大魷魚走甩咗！\n\n🏆 分數：{0}\n🎯 過關：{1}/{4} 關\n{3}\n\n你有信心捉得比我更好嗎？\n{2}\n\n#WildCatch #PocketArcade #BeatMyScore #野生捕捉',
+      noShot: '整唔到相，試吓影相模式。', saved: '已儲存相片。', noShare: '呢度分享唔到，用「複製戰績」啦。', copied: '已複製：{0}', jets: '墨嘴', clog: '塞咗', tw3: '亂風！風向冇定', tw4: '陣風！忽然好大，忽然冇風', tw5: '有個墨嘴塞咗！', tw6: '忽然大霧！跟住藍色激光', tw7: '最後一關：筷子跳舞！', cont: '喺第 {0} 關繼續', fromStart: '由第 1 關重新開始', lvTitle: '一共 {0} 關', bestRec: '最高紀錄：{0} 分 · 去到第 {1} 關', recAll: '最高紀錄：{0} 分 · {1} 關全破', noRec: '未有紀錄，捉第一隻啦！', contNote: '繼續會留喺呢關，不過分數由 0 計起。', keysT: '左手拇指撳 ↺ ↻ 轉身（可以直接滑過去），右手拇指㩒住「噴墨」。<br>打橫跌得慢又慳墨，但要企直、慢落，筷子先夾得實。', names: ['無風', '微風', '亂風', '陣風', '墨嘴塞咗', '大霧激光', '筷子跳舞'], clr: '過咗 {0}/{1} 關', remain: '🔓 仲未打：{0}', allClear: '👑 {0} 關全部過晒！', allB: '全破！', allT: '全部關卡過晒！', allText: '連跳緊舞嘅筷子都夾到！七關全破，你係真正嘅野生捕手。<br>' + N + '+{0}' + E + ' 分'
     },
     tw: {
       title: '大烏賊 捕獲大作戰',
@@ -202,9 +237,9 @@ canvas { width: 100%; height: 100%; object-fit: contain; display: block; }
       bonus: '（輕降獎勵 +50）', caughtSub: '落速 {0}　剩墨 {1}%　總分 ' + N + '{2}' + E, next: '下一關',
       lv: '第 {0} 關', pts: '{0} 分', ink: '墨', speed: '落速', ok: '可夾', fast: '太快', pose: '姿勢', upright: '站直', tilt: '斜 {0}°',
       wind: '風', calm: '無風', best: '最高 {0}', capStat: '落速 {0}　剩墨 {1}%',
-      post: '🦑 大烏賊 捕獲大作戰 — 你能打破我的紀錄嗎？\n\n我剛剛抓到一隻大烏賊！\n\n🏆 分數：{0}\n🎯 關卡：第 {1} 關\n\n你有信心抓得比我更好嗎？\n{2}\n\n#WildCatch #PocketArcade #BeatMyScore #大烏賊捕獲大作戰',
-      postMiss: '🦑 大烏賊 捕獲大作戰 — 你能打破我的紀錄嗎？\n\n大烏賊逃走了！\n\n🏆 分數：{0}\n🎯 關卡：第 {1} 關\n\n你有信心抓得比我更好嗎？\n{2}\n\n#WildCatch #PocketArcade #BeatMyScore #大烏賊捕獲大作戰',
-      noShot: '無法產生相片，試試拍照模式。', saved: '相片已儲存。', noShare: '這裡無法分享，請改用「複製戰績」。', copied: '已複製：{0}'
+      post: '🦑 大烏賊 捕獲大作戰 — 你能打破我的紀錄嗎？\n\n我剛剛抓到一隻大烏賊！\n\n🏆 分數：{0}\n🎯 過關：{1}/{4} 關\n{3}\n\n你有信心抓得比我更好嗎？\n{2}\n\n#WildCatch #PocketArcade #BeatMyScore #大烏賊捕獲大作戰',
+      postMiss: '🦑 大烏賊 捕獲大作戰 — 你能打破我的紀錄嗎？\n\n大烏賊逃走了！\n\n🏆 分數：{0}\n🎯 過關：{1}/{4} 關\n{3}\n\n你有信心抓得比我更好嗎？\n{2}\n\n#WildCatch #PocketArcade #BeatMyScore #大烏賊捕獲大作戰',
+      noShot: '無法產生相片，試試拍照模式。', saved: '相片已儲存。', noShare: '這裡無法分享，請改用「複製戰績」。', copied: '已複製：{0}', jets: '噴墨口', clog: '堵住了', tw3: '亂流！風向不定', tw4: '陣風！忽強忽停', tw5: '有一個噴墨口堵住了！', tw6: '突然起大霧！跟著藍色雷射', tw7: '最後一關：筷子跳舞！', cont: '從第 {0} 關繼續', fromStart: '從第 1 關重新開始', lvTitle: '共 {0} 關', bestRec: '最高紀錄：{0} 分 · 到達第 {1} 關', recAll: '最高紀錄：{0} 分 · {1} 關全破', noRec: '還沒有紀錄，抓第一隻吧！', contNote: '繼續會留在這一關，但分數從 0 開始。', keysT: '左手拇指按 ↺ ↻ 轉向（可以直接滑過去），右手拇指按住「噴墨」。<br>橫著掉比較慢又省墨，但要站直、慢慢落下，筷子才夾得住。', names: ['無風', '微風', '亂流', '陣風', '噴墨口堵住', '大霧雷射', '筷子跳舞'], clr: '過了 {0}/{1} 關', remain: '🔓 還沒挑戰：{0}', allClear: '👑 {0} 關全部破關！', allB: '全破！', allT: '全部關卡破關！', allText: '連跳舞的筷子都抓到了！七關全破，你是真正的野生捕手。<br>' + N + '+{0}' + E + ' 分'
     },
     jp: {
       title: '大イカ 捕獲作戦',
@@ -212,7 +247,7 @@ canvas { width: 100%; height: 100%; object-fit: contain; display: block; }
       keys: '← → 旋回　↑ / Space 墨噴射（頭の方向へ進む）<br>横向きはゆっくり落ちて墨も節約できるが、まっすぐ立ってゆっくり降りないと箸でつかめない。',
       start: 'スタート', left: '左旋回', jet: '墨噴射', right: '右旋回',
       save: '写真を保存', share: 'シェア', photo: '撮影モード', copy: 'スコアをコピー', hint: 'スクリーンショットをどうぞ　タップで戻る',
-      fTilt: '体が立っていない。箸先でつかめない！', fFast: '速すぎて箸先から滑り落ちた！', fSide: '横に流れすぎてつかめない！',
+      fTilt: '胴体が立っていない。箸先でつかめない！', fFast: '速すぎて箸先から滑り落ちた！', fSide: '横に流れすぎてつかめない！',
       fTower: 'タワーに激突！', fGround: '箸に届かず、地面に落下。',
       failT: '失敗', failSub: '残り ' + N + '{0}' + E + ' 杯。第{1}面をもう一度。', retry: 'もう一度',
       overT: '作戦終了', overSub: 'スコア ' + N + '{0}' + E + '　ベスト ' + N + '{1}' + E, restart: '最初から',
@@ -221,9 +256,9 @@ canvas { width: 100%; height: 100%; object-fit: contain; display: block; }
       bonus: '（ソフトキャッチ +50）', caughtSub: '降下速度 {0}　残り墨 {1}%　合計 ' + N + '{2}' + E, next: '次の面へ',
       lv: '第{0}面', pts: '{0} 点', ink: '墨', speed: '降下', ok: '良し', fast: '速い', pose: '姿勢', upright: '直立', tilt: '傾き {0}°',
       wind: '風', calm: '無風', best: 'ベスト {0}', capStat: '降下速度 {0}　残り墨 {1}%',
-      post: '🦑 大イカ 捕獲作戦 — この記録、超えられる？\n\n巨大イカを捕まえた！\n\n🏆 スコア：{0}\n🎯 ステージ：第{1}面\n\nもっとうまく捕まえられる？\n{2}\n\n#WildCatch #PocketArcade #BeatMyScore #大イカ捕獲作戦',
-      postMiss: '🦑 大イカ 捕獲作戦 — この記録、超えられる？\n\n大イカに逃げられた！\n\n🏆 スコア：{0}\n🎯 ステージ：第{1}面\n\nもっとうまく捕まえられる？\n{2}\n\n#WildCatch #PocketArcade #BeatMyScore #大イカ捕獲作戦',
-      noShot: '写真を作れません。撮影モードをどうぞ。', saved: '写真を保存しました。', noShare: 'ここではシェアできません。スコアをコピーしてください。', copied: 'コピーしました：{0}'
+      post: '🦑 大イカ 捕獲作戦 — この記録、超えられる？\n\n巨大イカを捕まえた！\n\n🏆 スコア：{0}\n🎯 突破：{1}/{4} ステージ\n{3}\n\nもっとうまく捕まえられる？\n{2}\n\n#WildCatch #PocketArcade #BeatMyScore #大イカ捕獲作戦',
+      postMiss: '🦑 大イカ 捕獲作戦 — この記録、超えられる？\n\n大イカに逃げられた！\n\n🏆 スコア：{0}\n🎯 突破：{1}/{4} ステージ\n{3}\n\nもっとうまく捕まえられる？\n{2}\n\n#WildCatch #PocketArcade #BeatMyScore #大イカ捕獲作戦',
+      noShot: '写真を作れません。撮影モードをどうぞ。', saved: '写真を保存しました。', noShare: 'ここではシェアできません。スコアをコピーしてください。', copied: 'コピーしました：{0}', jets: '噴射口', clog: '詰まり', tw3: '乱気流！風向きが定まらない', tw4: '突風！強まったり、止んだり', tw5: '噴射口がひとつ詰まった！', tw6: '突然の濃霧！青いレーザーを追え', tw7: '最終ステージ：踊る箸！', cont: '第{0}面から続ける', fromStart: '第1面からやり直す', lvTitle: '全{0}ステージ', bestRec: 'ベスト：{0}点・第{1}面まで', recAll: 'ベスト：{0}点・全{1}ステージ制覇', noRec: 'まだ記録なし。最初の一匹を！', contNote: '続けるとステージはそのまま、スコアは0から。', keysT: '左手の親指で ↺ ↻ 旋回（滑らせて切り替えOK）、右手の親指で「墨噴射」を長押し。<br>横向きはゆっくり落ちて墨も節約できるが、まっすぐ立ってゆっくり降りないと箸でつかめない。', names: ['無風', 'そよ風', '乱気流', '突風', '噴射口詰まり', '濃霧とレーザー', '踊る箸'], clr: '{0}/{1} ステージ突破', remain: '🔓 残り：{0}', allClear: '👑 全{0}ステージ制覇！', allB: '全制覇！', allT: '全ステージ制覇！', allText: '踊る箸にも捕まった！全7ステージ制覇、真の野生ハンターだ。<br>' + N + '+{0}' + E + ' 点'
     }
   };
   var lang = 'en';
@@ -249,7 +284,7 @@ canvas { width: 100%; height: 100%; object-fit: contain; display: block; }
   cv.width = W * dpr; cv.height = H * dpr; ctx.scale(dpr, dpr);
 
   var panel = document.getElementById('panel'), pTitle = document.getElementById('pTitle'),
-      pText = document.getElementById('pText'), pSub = document.getElementById('pSub'), pBtn = document.getElementById('pBtn'),
+      pText = document.getElementById('pText'), pSub = document.getElementById('pSub'), pBtn = document.getElementById('pBtn'), pBtn2 = document.getElementById('pBtn2'), pLv = document.getElementById('pLv'),
       pRow = document.getElementById('pRow'), pMsg = document.getElementById('pMsg'), hint = document.getElementById('hint'),
       bShare = document.getElementById('bShare'), bWa = document.getElementById('bWa'), bTh = document.getElementById('bTh'), pShareT = document.getElementById('pShareT'), bCard = document.getElementById('bCard'), pChal = document.getElementById('pChal'), pCard = document.getElementById('pCard'), bPhoto = document.getElementById('bPhoto'), bCopy = document.getElementById('bCopy');
 
@@ -319,8 +354,14 @@ canvas { width: 100%; height: 100%; object-fit: contain; display: block; }
   // ---------- state ----------
   var mode = 'title', level = 1, score = 0, lives = 3, best = 0, gain = 0;
   try { best = parseInt(localStorage.getItem('ika-best') || '0', 10) || 0; } catch (e) {}
-  var s = { x: 170, y: 220, vx: 0, vy: 0, a: 0, w: 0, ink: 100, inkMax: 100 };
-  var wind = 0, time = 0, modeT = 0, failMsg = '', grounded = false, groundT = 0, overlayShown = true;
+  var bestClr = 0;                                                                // most levels cleared in one run
+  try { bestClr = Math.min(7, parseInt(localStorage.getItem('ika-clr') || '0', 10) || 0); } catch (e) {}
+  var s = { x: 170, y: 303, vx: 0, vy: 0, a: 0, w: 0, ink: 100, inkMax: 100 };
+  var wind = 0, windY = 0, time = 0, modeT = 0, failMsg = '', grounded = false, groundT = 0, overlayShown = true;
+  // level twists: 3 wild wind from any side, 4 squalls (calm / normal / +70 %), 5 one ink jet clogged (-1 left, 1 right),
+  // 6 sudden fog with a laser from the chopstick tips, 7 dancing chopsticks (the carriage rides up and down)
+  var air = { tw: 0, base: 0, dir: 1, th0: 0, p1: 0, p2: 0, mult: 1, next: 0, clog: 0 }, bannerT = -9, streakX = 0, streakY = 0, shots = [];
+  var armH = ARM_Y, armV = 0, fogCv = document.createElement('canvas'); fogCv.width = W; fogCv.height = H;
   var tip = 180, cloudX = 0, photo = false, dl = null;
   var keys = { l: false, r: false, u: false };
   var parts = [], pools = [];
@@ -330,15 +371,33 @@ canvas { width: 100%; height: 100%; object-fit: contain; display: block; }
     var fromRight = level >= 4 && Math.random() < 0.25;
     s = { x: fromRight ? rnd(420, 450) : rnd(40, 130), y: -60, vx: rnd(-15, 15), vy: 70 + Math.min(level * 4, 36),
           a: fromRight ? -Math.PI / 2 : Math.PI / 2, w: 0, ink: inkMax, inkMax: inkMax };
-    wind = level === 1 ? 0 : (Math.random() < 0.5 ? -1 : 1) * Math.min(3 + level * 4, 34);
+    var base = level === 1 ? 0 : level <= 5 ? 3 + level * 4 : level === 6 ? 12 : 15, tw = level >= 3 ? level : 0;
+    air = { tw: tw, base: base, dir: Math.random() < 0.5 ? -1 : 1, th0: rnd(0, 6.283), p1: rnd(0, 6.283), p2: rnd(0, 6.283),
+            mult: 1, next: time + rnd(0.8, 1.4), clog: tw === 5 ? (Math.random() < 0.5 ? -1 : 1) : 0 };
+    bannerT = tw ? time : -9; shots = []; bams = []; blow(); armMove();
     mode = 'play'; modeT = 0; grounded = false; groundT = 0; parts = []; pools = [];
     hidePanel();
   }
+  function levelList() {                                                          // opening panel: the seven levels, what is cleared, the record
+    document.getElementById('pLvT').textContent = t('lvTitle', MAX_LV);
+    var ol = document.getElementById('pLvList'); ol.textContent = '';
+    L[lang].names.forEach(function (name, i) {
+      var li = document.createElement('li'), b = document.createElement('b');
+      b.textContent = String(i + 1); li.appendChild(b); li.appendChild(document.createTextNode(name));
+      if (i < bestClr) li.className = 'done';
+      ol.appendChild(li);
+    });
+    document.getElementById('pRec').textContent = bestClr >= MAX_LV ? t('recAll', best, MAX_LV)
+      : best > 0 ? t('bestRec', best, Math.min(bestClr + 1, MAX_LV)) : t('noRec');
+  }
   function newGame() { level = 1; score = 0; lives = 3; perfects = 0; hasMoment = false; beatT = -1; startLevel(); }
-  var panelFn = function () { return [t('title'), t('intro'), t('keys'), t('start')]; }, panelShare = false;
+  function contGame() { score = 0; lives = 3; perfects = 0; hasMoment = false; beatT = -1; startLevel(); }   // same level, fresh lives, score from 0
+  var panelFn = function () { return [t('title'), t('intro'), t(TOUCH ? 'keysT' : 'keys'), t('start')]; }, panelShare = false;
   function renderPanel() {
     var p = panelFn(); pTitle.textContent = p[0]; pText.innerHTML = p[1]; pSub.innerHTML = p[2]; pBtn.textContent = p[3];
     pRow.hidden = !panelShare;
+    pBtn2.hidden = !(mode === 'over' && level > 1); pBtn2.textContent = t('fromStart');
+    pLv.hidden = mode !== 'title'; if (!pLv.hidden) levelList();
     var ct = chalText(); pChal.textContent = ct; pChal.hidden = !ct;
     if (panelShare) prepCard(); else pCard.hidden = true;
   }
@@ -349,43 +408,145 @@ canvas { width: 100%; height: 100%; object-fit: contain; display: block; }
   function hidePanel() { panel.hidden = true; overlayShown = false; photo = false; }
   function saveBest() { if (score > best) { best = score; try { localStorage.setItem('ika-best', String(best)); } catch (e) {} } }
 
+  // wind for this frame. Level 2 and up: a side wind that swells ±40 %, unless the level has a twist
+  function blow() {
+    if (air.tw === 3) {                                                            // wild wind: the direction wanders all the way round
+      var th = air.th0 + 2.4 * Math.sin(time * 0.62 + air.p1) + 1.4 * Math.sin(time * 1.7 + air.p2);
+      var m = air.base * 1.3 * (1 + 0.25 * Math.sin(time * 1.3));
+      wind = m * Math.cos(th); windY = m * Math.sin(th);
+      return;
+    }
+    if (air.tw === 4 && time >= air.next) {                                        // squalls: snaps between calm, normal and +70 %
+      var opts = air.mult === 0 ? [1.7, 1.7, 1] : air.mult === 1.7 ? [0, 0, 1] : [0, 1.7];
+      air.mult = opts[Math.floor(Math.random() * opts.length)];
+      air.next = time + (air.mult === 1 ? rnd(0.6, 1.2) : rnd(0.5, 1.2));
+    }
+    wind = air.dir * air.base * (air.tw === 4 ? air.mult : 1 + 0.4 * Math.sin(time * 1.3)); windY = 0;
+  }
+  function armMove() {                                                            // level 7: the carriage dances between y 351 and 439, one cycle every 4 s
+    if (air.tw === 7) { var ph = time * 1.57 + air.p1; armH = ARM_Y + 12 + 44 * Math.sin(ph); armV = 69.1 * Math.cos(ph); }
+    else { armH = ARM_Y; armV = 0; }
+  }
+  function cleared() { return mode === 'caught' ? level : level - 1; }
+  function leftLine() {                                                           // share text: the levels this player has not cleared yet
+    var c = cleared(), out = [];
+    if (c >= MAX_LV) return t('allClear', MAX_LV);
+    for (var i = c + 1; i <= MAX_LV; i++) out.push(t('lv', i) + ' ' + L[lang].names[i - 1]);
+    return t('remain', out.join(' · '));
+  }
+  function fogK() {                                                               // level 6 fog: rolls in fast after 1 s, lifts after a catch or a miss
+    if (air.tw !== 6) return 0;
+    if (mode === 'play') return ease((modeT - 1) / 0.5);
+    if (mode === 'caught') return 1 - ease((modeT - 0.3) / 1.2);
+    return mode === 'fail' ? 1 - ease(modeT / 1.2) : 0;
+  }
+  // from level 2 the press is waiting: camera flashes with manga カシャ lettering after each catch
+  function pressShots() {
+    var out = [], words = ['カシャ', 'カシャッ', 'パシャ', 'カシャ'];
+    var spots = [[90, 350], [390, 365], [70, 520], [420, 525], [135, 605], [360, 610]].sort(function () { return Math.random() - 0.5; });
+    var n = level >= MAX_LV ? 12 : 7;                                               // the final catch gets a bigger crowd
+    for (var i = 0; i < n; i++) {
+      var last = i === n - 1, at = last ? [180, 470] : spots[i % 6];
+      out.push({ t: 0.35 + i * 0.2 + rnd(0, 0.07), x: at[0] + rnd(-20, 20), y: at[1] + rnd(-15, 15),
+                 rot: rnd(-0.35, 0.35), size: last ? 34 : rnd(19, 27), txt: last ? 'カシャカシャ' : words[i % words.length] });
+    }
+    return out;
+  }
+  function buzz(pattern) { if (TOUCH && navigator.vibrate) try { navigator.vibrate(pattern); } catch (e) {} }   // Android only; iPhone ignores it
   function fail(msg) { if (mode !== 'play') return; mode = 'fail'; modeT = 0; failMsg = msg; lives--; }
+  // ---------- crashes: the reaction follows how hard, where and at what angle the squid hit ----------
+  var shakeA = 0, shakeT = -9, stickHitT = -9, bams = [];
+  function shake(a) { if (!REDUCED) { shakeA = Math.min(9, a); shakeT = time; } }
+  function bam(txt, f, x, y) { bams.push({ t: time, txt: txt, size: clamp(16 + f * 0.16, 16, 44), x: clamp(x, 70, W - 70), y: clamp(y - 46, 70, GROUND - 50), rot: rnd(-0.3, 0.3) }); }
+  function word(f, soft, mid, hard) { return f < 60 ? soft : f < 120 ? mid : hard; }
+  function thud(f) { buzz(Math.round(clamp(60 + f, 60, 240))); }
+  function hitTower(ps) {                                                         // ps: the body points touching the tower
+    var cx = 0, cy = 0, i, tq;
+    for (i = 0; i < ps.length; i++) { cx += ps[i][0] / ps.length; cy += ps[i][1] / ps.length; }
+    var px = cx - s.x, py = cy - s.y, top = cy - s.vy / 60 <= TOWER_TOP + 3;
+    var side = s.x < TOWER_X + TOWER_W / 2 ? -1 : 1, nx, ny, f;
+    if (top) { f = Math.max(0, s.vy); nx = 0; ny = -1; tq = px * ny * f; s.vy = -f * 0.35; s.vx += side * rnd(25, 55); }   // landed on the top: bounces up and off
+    else {                                                                        // hit a side: bounces back, harder the faster it came in
+      var into = Math.max(0, -side * s.vx); f = into + Math.abs(s.vy) * 0.2; nx = side; ny = 0;
+      tq = -py * nx * f + (px - side * RAD) * -0.4 * f * (s.vy >= 0 ? 1 : -1);    // off-centre push, plus friction against sliding down the tower
+      s.vx = side * (25 + into * 0.55); s.vy *= 0.75; s.x += side * 6;
+    }
+    s.w = clamp(s.w * 0.3 + tq * 0.0009 + rnd(-0.6, 0.6), -9, 9);
+    for (var k = 0, n = Math.round(10 + f * 0.25); k < n; k++) spark(cx, cy, nx * rnd(20, 140) + rnd(-60, 60), ny * rnd(20, 140) + rnd(-90, 30));
+    bam(word(f, 'コツン', 'ガン！', 'ガシャーン！'), f, cx, cy); shake(f * 0.05); thud(f);
+  }
+  function slipTips(kind) {                                                       // the chopstick tips knock the squid as it slips through
+    var f = Math.max(0, s.vy - armV), sg = s.a >= 0 ? 1 : -1;
+    if (kind === 'fTilt') { s.w = sg * (1.2 + Math.abs(s.a) * 1.5 + f * 0.015); s.vy *= 0.7; s.vx += sg * rnd(10, 30); }
+    else if (kind === 'fFast') { s.w = rnd(-1, 1) * (0.5 + f * 0.012); s.vy *= 0.85; }
+    else { s.w = (s.vx >= 0 ? 1 : -1) * (1 + Math.abs(s.vx) * 0.03); s.vx *= 1.1; s.vy *= 0.85; }
+    stickHitT = time;
+    for (var j = 0, n = Math.round(6 + f * 0.12); j < n; j++) spark(s.x, armH, rnd(-90, 90), rnd(-110, 0));
+    bam(kind === 'fTilt' ? 'ガツッ' : kind === 'fFast' ? 'ズルッ' : 'スルッ', 40 + f * 0.5, s.x, armH); thud(30);
+  }
+  function hitGround() {                                                          // touched down while still flying: topples, bounces if it came in hard
+    var f = Math.max(0, s.vy);
+    s.w = (s.a >= 0 ? 1 : -1) * (1.5 + f * 0.02) + rnd(-0.4, 0.4);
+    s.vy = f > 140 ? -f * 0.3 : 0; s.vx *= 0.6; s.bounced = true;
+    splash(s.x, clamp(f / 120, 0.4, 1.6)); bam(word(f, 'ベチャ', 'ベチャッ！', 'ドシャーン！'), f, s.x, GROUND - 30); shake(f * 0.05); thud(f);
+  }
+  function bamDraw() {                                                            // crash lettering: pops in, then fades
+    for (var i = bams.length - 1; i >= 0; i--) {
+      var b = bams[i], a = time - b.t;
+      if (a > 0.9) { bams.splice(i, 1); continue; }
+      var sc = REDUCED || a >= 0.1 ? 1 : 1.5 - a / 0.1 * 0.5;
+      ctx.save(); ctx.globalAlpha = a < 0.6 ? 1 : 1 - (a - 0.6) / 0.3; ctx.translate(b.x, b.y); ctx.rotate(b.rot); ctx.scale(sc, sc);
+      ctx.font = '800 ' + b.size + 'px ' + DISPLAY; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round';
+      ctx.lineWidth = b.size / 4; ctx.strokeStyle = '#0b0a0d'; ctx.strokeText(b.txt, 0, 0);
+      ctx.fillStyle = '#f0b44a'; ctx.fillText(b.txt, 0, 0); ctx.restore();
+    }
+  }
   function caught() {
     mode = 'caught'; modeT = 0;
-    s.perfect = s.vy <= 25 && Math.abs(s.a) < 0.15;
-    gain = 100 + Math.round(s.ink * 3) + Math.round((SAFE_VY - s.vy) * 2) + (s.perfect ? 50 : 0);
+    var rel = s.vy - armV;
+    s.perfect = rel <= 25 && Math.abs(s.a) < 0.15;
+    gain = 100 + Math.round(s.ink * 3) + Math.round((SAFE_VY - rel) * 2) + (s.perfect ? 50 : 0);
     score += gain; saveBest(); if (s.perfect) perfects++; wantMoment = true;
+    if (level > bestClr) { bestClr = level; try { localStorage.setItem('ika-clr', String(bestClr)); } catch (e) {} }
+    if (level >= 2) shots = pressShots();
+    buzz([30, 50, 30]);
     if (chal && score > chal.score && beatT < 0) beatT = time;
-    s.catchVy = s.vy; s.catchX = s.x; s.catchA = s.a; s.vx = 0; s.vy = 0; s.w = 0; s.y = ARM_Y;
-    for (var i = 0; i < 36; i++) spark(s.x + (i % 2 ? RAD : -RAD), ARM_Y, rnd(-110, 110), rnd(-150, -10));
-    if (s.perfect) for (var q = 0; q < 48; q++) { var an = q / 48 * 6.283; spark(s.x, ARM_Y, Math.cos(an) * 160, Math.sin(an) * 160 - 60); }
+    s.catchVy = rel; s.catchX = s.x; s.catchA = s.a; s.vx = 0; s.vy = 0; s.w = 0; s.y = armH;
+    for (var i = 0; i < 36; i++) spark(s.x + (i % 2 ? RAD : -RAD), armH, rnd(-110, 110), rnd(-150, -10));
+    if (s.perfect) for (var q = 0; q < 48; q++) { var an = q / 48 * 6.283; spark(s.x, armH, Math.cos(an) * 160, Math.sin(an) * 160 - 60); }
   }
 
   // ---------- particles ----------
   function ink(x, y, vx, vy, r) { if (parts.length < 520) parts.push({ k: 0, x: x, y: y, vx: vx, vy: vy, r: r, life: 0, max: rnd(1.3, 2.6), sd: Math.random() * 6.3 }); }
   function spark(x, y, vx, vy) { parts.push({ k: 1, x: x, y: y, vx: vx, vy: vy, life: 0, max: rnd(0.4, 1) }); }
-  function splash(x) {
-    for (var i = 0; i < 70; i++) ink(x + rnd(-12, 12), GROUND - 4, rnd(-140, 140), rnd(-170, -10), rnd(6, 14));
-    for (var j = 0; j < 7; j++) pools.push({ x: x + rnd(-50, 50), y: GROUND + rnd(2, 14), rx: rnd(10, 34), ry: rnd(2, 5) });
+  function splash(x, k) {                                                         // k: 0.3 gentle … 1.6 hard
+    k = k || 1; var v = 0.5 + 0.5 * k;
+    for (var i = 0, n = Math.round(30 + 40 * k); i < n; i++) ink(x + rnd(-12, 12), GROUND - 4, rnd(-140, 140) * v, rnd(-170, -10) * v, rnd(6, 14));
+    for (var j = 0, m = Math.round(3 + 4 * k); j < m; j++) pools.push({ x: x + rnd(-50, 50) * k, y: GROUND + rnd(2, 14), rx: rnd(10, 34) * (0.6 + 0.4 * k), ry: rnd(2, 5) });
   }
 
   // ---------- update ----------
   function update(dt) {
-    time += dt; modeT += dt; cloudX += (8 + wind * 0.5) * dt;
+    time += dt; modeT += dt; blow();
+    cloudX += (8 + wind * 0.5) * dt; streakX += wind * 4 * dt; streakY += windY * 4 * dt;
     if (mode === 'play') {
-      // turning: fins, costs no ink
-      var target = (keys.r ? TURN : 0) - (keys.l ? TURN : 0);
+      var armPrev = armH; armMove();
+      // turning: fins, costs no ink. A clogged side jet twists the squid while it jets
+      var jetting = keys.u && s.ink > 0, steer = (keys.r ? TURN : 0) - (keys.l ? TURN : 0);
+      var target = steer + (jetting ? air.clog * CLOG_TWIST : 0);
       s.w += (target - s.w) * Math.min(1, 10 * dt);
       s.a += s.w * dt;
       if (s.a > Math.PI) s.a -= 2 * Math.PI; if (s.a < -Math.PI) s.a += 2 * Math.PI;
-      if (!target && Math.abs(s.a) < 0.3) s.a -= s.a * Math.min(1, 2.5 * dt);      // settles upright
+      if (!steer && Math.abs(s.a) < 0.3) s.a -= s.a * Math.min(1, 2.5 * dt);       // settles upright
       var sn = Math.sin(s.a), cs = Math.cos(s.a), flat = Math.abs(sn);
-      var ax = wind * (1 + 0.4 * Math.sin(time * 1.3)), ay = G;
+      var ax = wind, ay = G + windY;
       ay -= Math.max(0, s.vy - 55) * 1.3 * flat;                                    // belly-flop drag
       ax -= s.vx * 0.5 * Math.abs(cs);
-      if (keys.u && s.ink > 0) {
-        ax += sn * JET; ay -= cs * JET; s.ink = Math.max(0, s.ink - 21 * dt);
-        var tx = s.x - sn * 54, ty = s.y + cs * 54;
+      if (jetting) {
+        var thrust = JET * (air.clog ? 2 / 3 : 1);                                  // two of three ink jets still firing
+        ax += sn * thrust; ay -= cs * thrust; s.ink = Math.max(0, s.ink - 21 * dt);
+        var off = -air.clog * 3, tx = s.x - sn * 54 + cs * off, ty = s.y + cs * 54 + sn * off;
+        if (air.clog && Math.random() < 3 * dt) ink(s.x - sn * 54 + cs * air.clog * 4, s.y + cs * 54 + sn * air.clog * 4, s.vx - sn * 30 + rnd(-20, 20), s.vy + cs * 30 + rnd(-20, 20), rnd(3, 5));   // the clogged jet coughs
         for (var n = 0; n < 2; n++) ink(tx + rnd(-4, 4), ty + rnd(-4, 4), s.vx - sn * rnd(90, 160) + rnd(-25, 25), s.vy + cs * rnd(90, 160) + rnd(-25, 25), rnd(5, 9));
       }
       s.vx += ax * dt; s.vy += ay * dt;
@@ -394,31 +555,51 @@ canvas { width: 100%; height: 100%; object-fit: contain; display: block; }
       if (s.x < 20) { s.x = 20; s.vx = 0; } if (s.x > W - 20) { s.x = W - 20; s.vx = 0; }
       if (s.y < -110) { s.y = -110; if (s.vy < 0) s.vy = 0; }
       // chopstick tips reach for the squid
-      var want = s.y < ARM_Y + 6 ? clamp(s.x, ZONE0, ZONE1) - 34 : tip;
+      var want = s.y < armH + 6 ? clamp(s.x, ZONE0, ZONE1) - 34 : tip;
       tip += (want - tip) * Math.min(1, 7 * dt);
       var ext = HALF * Math.abs(cs) + (RAD + 4) * flat, hit = false;
       var pts = [[s.x + sn * HALF, s.y - cs * HALF], [s.x, s.y], [s.x - sn * HALF, s.y + cs * HALF]];
-      for (var i = 0; i < 3; i++) if (pts[i][0] > TOWER_X - RAD * 0.8 && pts[i][0] < TOWER_X + TOWER_W + RAD * 0.8 && pts[i][1] > TOWER_TOP) hit = true;
-      if (py < ARM_Y && s.y >= ARM_Y && s.x >= ZONE0 && s.x <= ZONE1 && !hit) {
+      var touch = [];
+      for (var i = 0; i < 3; i++) if (pts[i][0] > TOWER_X - RAD * 0.8 && pts[i][0] < TOWER_X + TOWER_W + RAD * 0.8 && pts[i][1] > TOWER_TOP) { touch.push(pts[i]); hit = true; }
+      if (py < armPrev && s.y >= armH && s.x >= ZONE0 && s.x <= ZONE1 && !hit) {          // crossed the chopsticks from above
         if (Math.abs(s.a) > SAFE_A) fail('fTilt');
-        else if (s.vy > SAFE_VY) fail('fFast');
+        else if (s.vy - armV > SAFE_VY) fail('fFast');
         else if (Math.abs(s.vx) > SAFE_VX) fail('fSide');
         else caught();
-        if (mode === 'fail') for (var j = 0; j < 14; j++) spark(s.x, ARM_Y, rnd(-80, 80), rnd(-90, 0));
+        if (mode === 'fail') slipTips(failMsg);
       } else if (hit) {
-        fail('fTower'); s.vx = s.x < TOWER_X + TOWER_W / 2 ? -70 : 70;
-        for (var k = 0; k < 20; k++) spark(s.x, s.y, rnd(-100, 100), rnd(-100, 40));
-      } else if (s.y + ext >= GROUND) fail('fGround');
+        fail('fTower'); hitTower(touch);
+      } else if (s.y + ext >= GROUND) { fail('fGround'); hitGround(); }
     }
     if (mode === 'fail') {
-      if (!grounded) {
-        s.vy += G * 1.6 * dt; s.x += s.vx * dt; s.y += s.vy * dt; s.a += 3.2 * dt;
-        if (s.y + RAD + 4 >= GROUND) { s.y = GROUND - RAD - 4; s.a = Math.PI / 2; grounded = true; groundT = 0; splash(s.x); }
+      if (!grounded) {                                                              // tumbles: keeps the spin from the hit, drifts with the wind
+        s.vy += G * 1.6 * dt; s.vx += wind * 0.3 * dt; s.vx *= 1 - 0.3 * dt;
+        s.x += s.vx * dt; s.y += s.vy * dt; s.a += s.w * dt; s.w *= 1 - 0.4 * dt;
+        if (s.a > Math.PI) s.a -= 2 * Math.PI; if (s.a < -Math.PI) s.a += 2 * Math.PI;
+        if (s.x < 20) { s.x = 20; s.vx = Math.abs(s.vx) * 0.4; } if (s.x > W - 20) { s.x = W - 20; s.vx = -Math.abs(s.vx) * 0.4; }
+        if (s.y > TOWER_TOP && s.x > TOWER_X - RAD && s.x < TOWER_X + TOWER_W + RAD) {    // falls back into the tower: glances off it
+          var sd = s.x < TOWER_X + TOWER_W / 2 ? -1 : 1; s.x = sd < 0 ? TOWER_X - RAD : TOWER_X + TOWER_W + RAD; s.vx = sd * Math.abs(s.vx) * 0.4;
+        }
+        if (s.y + RAD + 4 >= GROUND) {
+          var vI = Math.max(0, s.vy); s.y = GROUND - RAD - 4;
+          if (vI > 140 && !s.bounced) {                                               // hard landing: one bounce
+            s.bounced = true; s.vy = -vI * 0.3; s.vx *= 0.6; s.w = -s.w * 0.5 + rnd(-1, 1);
+            splash(s.x, clamp(vI / 150, 0.6, 1.6)); bam(word(vI, 'ベチャ', 'ベチャッ！', 'ドシャーン！'), vI, s.x, GROUND - 30); shake(vI * 0.05); thud(vI);
+          } else {                                                                    // settles: flops onto the side it was leaning to
+            grounded = true; groundT = 0; s.lie = s.a >= 0 ? Math.PI / 2 : -Math.PI / 2;
+            if (vI > 30) splash(s.x, clamp(vI / 120, 0.3, 1.4));
+            if (vI > 60 && !s.bounced) { bam(word(vI, 'ベチャ', 'ベチャッ！', 'ドシャーン！'), vI, s.x, GROUND - 30); shake(vI * 0.04); thud(vI); }
+          }
+        }
       } else {
+        s.a += (s.lie - s.a) * Math.min(1, 9 * dt); s.x += s.vx * dt; s.vx *= 1 - 6 * dt;
         groundT += dt;
         if (groundT > 0.9 && !overlayShown) {
           if (lives > 0) showPanel(function () { return [t('failT'), t(failMsg), t('failSub', lives, level), t('retry')]; }, false);
-          else { saveBest(); mode = 'over'; showPanel(function () { return [t('overT'), t(failMsg), t('overSub', score, best), t('restart')]; }, true); }
+          else {
+            saveBest(); mode = 'over';
+            showPanel(function () { return [t('overT'), t(failMsg), t('overSub', score, best) + (level > 1 ? '<br>' + t('contNote') : ''), level > 1 ? t('cont', level) : t('restart')]; }, true);
+          }
         }
       }
     }
@@ -426,9 +607,11 @@ canvas { width: 100%; height: 100%; object-fit: contain; display: block; }
       // pinch → the chopsticks draw the squid in to the tower and lift it → it hugs the tower
       var pull = ease((modeT - 0.3) / 0.9);
       s.x = lerp(s.catchX, TOWER_X - 30, pull); tip = s.x - 34;
-      s.y = ARM_Y - 12 * pull + 6 * Math.exp(-3 * modeT) * Math.sin(11 * modeT);
+      s.y = armH - 12 * pull + 6 * Math.exp(-3 * modeT) * Math.sin(11 * modeT);
       s.a = s.catchA * Math.exp(-4 * modeT) + 0.12 * Math.exp(-1.6 * modeT) * Math.sin(7 * modeT);
-      if (modeT > 3.1 && !overlayShown) {
+      if (modeT > 3.1 && !overlayShown && level >= MAX_LV) {
+        showPanel(function () { return [t('allT'), t('allText', gain), t('overSub', score, best), t('restart')]; }, true);
+      } else if (modeT > 3.1 && !overlayShown) {
         showPanel(function () { return [t(s.perfect ? 'perfect' : 'caughtT'), t('caughtText', gain) + (s.perfect ? t('bonus') : ''),
           t('caughtSub', Math.round(s.catchVy), Math.round(s.ink / s.inkMax * 100), score), t('next')]; }, true);
       }
@@ -436,7 +619,7 @@ canvas { width: 100%; height: 100%; object-fit: contain; display: block; }
     for (var p, m = parts.length - 1; m >= 0; m--) {
       p = parts[m]; p.life += dt;
       if (p.life > p.max) { parts.splice(m, 1); continue; }
-      if (p.k === 0) { p.vx *= 1 - 1.8 * dt; p.vy *= 1 - 1.8 * dt; p.vx += wind * 0.5 * dt; p.r += 9 * dt; }
+      if (p.k === 0) { p.vx *= 1 - 1.8 * dt; p.vy *= 1 - 1.8 * dt; p.vx += wind * 0.5 * dt; p.vy += windY * 0.5 * dt; p.r += 9 * dt; }
       else p.vy += 260 * dt;
       p.x += p.vx * dt; p.y += p.vy * dt;
       if (p.k === 0 && p.y > GROUND - 2) { p.y = GROUND - 2; p.vy = 0; }
@@ -444,14 +627,15 @@ canvas { width: 100%; height: 100%; object-fit: contain; display: block; }
   }
 
   // ---------- draw ----------
-  function armY() { return mode === 'caught' ? ARM_Y - 12 * ease((modeT - 0.3) / 0.9) : ARM_Y; }
+  function armY() { return mode === 'caught' ? armH - 12 * ease((modeT - 0.3) / 0.9) : armH; }
   function stick(front) {
     var y = armY(), open;
     if (mode === 'caught') open = lerp(9, 0, clamp(modeT / 0.18, 0, 1));
     else {
-      var near = (mode === 'play' && s.y < ARM_Y) ? clamp(1 - (ARM_Y - s.y) / 190, 0, 1) : (mode === 'title' ? 0.5 : 0);
+      var near = (mode === 'play' && s.y < armH) ? clamp(1 - (armH - s.y) / 190, 0, 1) : (mode === 'title' ? 0.5 : 0);
       open = 9 + near * Math.abs(Math.sin(time * 9)) * 6;                            // カチカチ
     }
+    var hitAgo = time - stickHitT; if (hitAgo < 1.2) open = Math.max(0, open + Math.exp(-hitAgo * 5) * Math.sin(hitAgo * 38) * 5);   // shudder after a slip
     var sgn = front ? 1 : -1, ty = y + sgn * (2 + open), ey = y + sgn * 7, x0 = tip, x1 = tip + STICK;
     var t0 = front ? 2 : 1.5, t1 = front ? 5.5 : 4.5;
     var wg = ctx.createLinearGradient(0, ty - 6, 0, ty + 6);
@@ -464,7 +648,7 @@ canvas { width: 100%; height: 100%; object-fit: contain; display: block; }
     var bx = x0 + STICK * 0.8, by = lerp(ty, ey, 0.8), bt = lerp(t0, t1, 0.8);
     ctx.fillStyle = '#b5321f'; ctx.fillRect(bx, by - bt, 16, bt * 2);
     ctx.fillStyle = '#e8c56a'; ctx.fillRect(bx - 2, by - bt, 1.5, bt * 2); ctx.fillRect(bx + 16.5, by - bt, 1.5, bt * 2);
-    if (front && mode === 'play' && s.y < ARM_Y && s.y > ARM_Y - 150 && Math.sin(time * 9) > 0.6) {
+    if (front && mode === 'play' && s.y < armH && s.y > armH - 150 && Math.sin(time * 9) > 0.6) {
       ctx.font = '700 11px ' + UI; ctx.fillStyle = 'rgba(236,230,214,0.85)'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
       ctx.fillText('カチ', x0 - 6, y - 16);
     }
@@ -532,9 +716,9 @@ canvas { width: 100%; height: 100%; object-fit: contain; display: block; }
       }
     }
     if (jet) {
-      var fl = ctx.createRadialGradient(0, 58, 0, 0, 58, 22);
+      var fx = -air.clog * 3, fr = air.clog ? 17 : 22, fl = ctx.createRadialGradient(fx, 58, 0, fx, 58, fr);
       fl.addColorStop(0, 'rgba(255,230,180,0.95)'); fl.addColorStop(0.4, 'rgba(240,120,50,0.5)'); fl.addColorStop(1, 'rgba(240,120,50,0)');
-      ctx.fillStyle = fl; ctx.beginPath(); ctx.arc(0, 58, 22, 0, 6.3); ctx.fill();
+      ctx.fillStyle = fl; ctx.beginPath(); ctx.arc(fx, 58, fr, 0, 6.3); ctx.fill();
     }
     // fins
     var flap = Math.sin(time * 5) * 3;
@@ -582,18 +766,99 @@ canvas { width: 100%; height: 100%; object-fit: contain; display: block; }
     ctx.textAlign = 'left'; ctx.fillStyle = 'rgba(236,230,214,0.65)'; ctx.fillText(t('ink'), 22, 40);
     ctx.fillStyle = 'rgba(236,230,214,0.18)'; ctx.fillRect(54, 43, 126, 8);
     var f = s.ink / s.inkMax; ctx.fillStyle = f < 0.25 ? '#d6402a' : '#ece6d6'; ctx.fillRect(54, 43, 126 * f, 8);
-    var ok = s.vy <= SAFE_VY, up = Math.abs(s.a) <= SAFE_A;
+    var vr = s.vy - armV, ok = vr <= SAFE_VY, up = Math.abs(s.a) <= SAFE_A;
     ctx.fillStyle = 'rgba(236,230,214,0.65)'; ctx.fillText(t('speed'), 22, 60);
-    ctx.textAlign = 'right'; ctx.fillStyle = ok ? '#8fd08a' : '#d6402a'; ctx.fillText(Math.round(Math.max(0, s.vy)) + ' / ' + SAFE_VY + ' ' + t(ok ? 'ok' : 'fast'), 180, 60);
+    ctx.textAlign = 'right'; ctx.fillStyle = ok ? '#8fd08a' : '#d6402a'; ctx.fillText(Math.round(Math.max(0, vr)) + ' / ' + SAFE_VY + ' ' + t(ok ? 'ok' : 'fast'), 180, 60);
     ctx.textAlign = 'left'; ctx.fillStyle = 'rgba(236,230,214,0.65)'; ctx.fillText(t('pose'), 22, 80);
     ctx.textAlign = 'right'; ctx.fillStyle = up ? '#8fd08a' : '#d6402a'; ctx.fillText(up ? t('upright') : t('tilt', Math.round(Math.abs(s.a) * 57.3)), 180, 80);
     ctx.textAlign = 'left'; ctx.fillStyle = 'rgba(236,230,214,0.65)'; ctx.fillText(t('wind'), 22, 100);
-    var n = Math.ceil(Math.abs(wind) / 12), a = ''; for (var i = 0; i < n; i++) a += wind < 0 ? '←' : '→';
-    ctx.textAlign = 'right'; ctx.fillStyle = '#ece6d6'; ctx.fillText(a || t('calm'), 180, 100);
+    var wm = Math.hypot(wind, windY);
+    if (wm < 1) { ctx.textAlign = 'right'; ctx.fillStyle = '#ece6d6'; ctx.fillText(t('calm'), 180, 100); }
+    else {                                                                          // arrow points where the wind blows; longer = stronger
+      var al = 8 + Math.min(wm, 40) * 0.55;
+      ctx.save(); ctx.translate(160, 107); ctx.rotate(Math.atan2(windY, wind));
+      ctx.strokeStyle = ctx.fillStyle = wm > 30 ? '#f0b44a' : '#ece6d6'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(-al / 2, 0); ctx.lineTo(al / 2 - 4, 0); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(al / 2, 0); ctx.lineTo(al / 2 - 7, -4.5); ctx.lineTo(al / 2 - 7, 4.5); ctx.fill();
+      ctx.restore();
+    }
+    ctx.textAlign = 'right'; ctx.fillStyle = '#ece6d6';
     var l = ''; for (var j = 0; j < lives; j++) l += '🦑'; ctx.fillText(l, W - 12, 16);
     ctx.fillStyle = 'rgba(236,230,214,0.65)'; ctx.fillText(t('best', best), W - 12, 38);
     if (chal) { ctx.fillStyle = score > chal.score ? '#8fd08a' : '#f0b44a'; ctx.fillText(A('target', chal.score), W - 12, 58); }
     if (mode === 'play' && s.y < -HALF) { ctx.fillStyle = '#f0b44a'; ctx.beginPath(); ctx.moveTo(s.x, 6); ctx.lineTo(s.x - 7, 18); ctx.lineTo(s.x + 7, 18); ctx.fill(); }
+    jetPanel();
+  }
+  // ink-jet map, like the engine diagram on a launch broadcast: lit = firing, outer ring = fins (the side you steer to), red X = clogged
+  function jetPanel() {
+    var cx = 40, cy = H - 37, firing = mode === 'play' && keys.u && s.ink > 0, k, an, working = 0;
+    ctx.fillStyle = 'rgba(12,11,15,0.74)'; ctx.fillRect(10, H - 64, 150, 54);
+    ctx.fillStyle = '#d6402a'; ctx.fillRect(10, H - 64, 3, 54);
+    ctx.strokeStyle = 'rgba(236,230,214,0.25)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(cx, cy, 21, 0, 6.3); ctx.stroke();
+    for (k = 0; k < 6; k++) { an = (k - 1) * Math.PI / 3; nozzle(cx + Math.cos(an) * 15, cy + Math.sin(an) * 15, 3.2, mode === 'play' && (k < 3 ? keys.r : keys.l) ? 1 : 0); }
+    var pos = [[0, -6], [-5.2, 3], [5.2, 3]];
+    for (k = 0; k < 3; k++) {
+      var dead = (k === 1 && air.clog === -1) || (k === 2 && air.clog === 1);
+      if (!dead) working++;
+      nozzle(cx + pos[k][0], cy + pos[k][1], 4.2, dead ? -1 : firing ? 1 : 0);
+    }
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.font = '600 12px ' + UI;
+    ctx.fillStyle = 'rgba(236,230,214,0.65)'; ctx.fillText(t('jets'), 70, cy - 9);
+    ctx.font = '700 13px ' + UI; ctx.fillStyle = air.clog ? '#d6402a' : '#ece6d6';
+    ctx.fillText(working + '/3' + (air.clog ? '  ' + t('clog') : ''), 70, cy + 9);
+  }
+  function nozzle(x, y, r, st) {                                                  // st: 1 firing, 0 idle, -1 clogged
+    if (st === 1) {
+      var g = ctx.createRadialGradient(x, y, 0, x, y, r * 2.4); g.addColorStop(0, 'rgba(255,170,80,0.55)'); g.addColorStop(1, 'rgba(255,120,40,0)');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r * 2.4, 0, 6.3); ctx.fill();
+      ctx.fillStyle = '#ffe2b0'; ctx.beginPath(); ctx.arc(x, y, r, 0, 6.3); ctx.fill();
+      return;
+    }
+    ctx.strokeStyle = st < 0 ? '#d6402a' : 'rgba(236,230,214,0.55)'; ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.arc(x, y, r, 0, 6.3); ctx.stroke();
+    if (st < 0) { var d = r * 0.6; ctx.beginPath(); ctx.moveTo(x - d, y - d); ctx.lineTo(x + d, y + d); ctx.moveTo(x + d, y - d); ctx.lineTo(x - d, y + d); ctx.stroke(); }
+  }
+  function fog(k) {                                                               // thick sea fog, a little clearer right round the squid
+    var f = fogCv.getContext('2d'), fx = -((((cloudX * 1.6) % (W * 2)) + W * 2) % (W * 2));
+    f.globalCompositeOperation = 'source-over'; f.clearRect(0, 0, W, H);
+    f.fillStyle = 'rgba(172,178,182,' + 0.92 * k + ')'; f.fillRect(0, 0, W, H);
+    f.globalAlpha = 0.6 * k; f.drawImage(clouds, fx, 40); f.drawImage(clouds, fx + W * 2, 40); f.globalAlpha = 1;
+    if (mode === 'play') {
+      var g = f.createRadialGradient(s.x, s.y, 18, s.x, s.y, 95); g.addColorStop(0, 'rgba(0,0,0,0.85)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+      f.globalCompositeOperation = 'destination-out'; f.fillStyle = g; f.fillRect(s.x - 95, s.y - 95, 190, 190);
+    }
+    ctx.drawImage(fogCv, 0, 0, W, H);
+  }
+  function laser(k) {                                                             // the tower fires a straight blue laser up from its mast head, through the fog
+    var bx = TOWER_X + TOWER_W / 2, by = TOWER_TOP - 42, up = mode === 'play' ? ease((modeT - 1) / 0.35) : 1, top = by - (by + 30) * up;
+    if (up <= 0) return;
+    var pulse = 0.85 + 0.15 * Math.sin(time * 9) + 0.25 * Math.pow(Math.max(0, Math.sin(time * 2.3)), 10);   // steady hum, the odd surge
+    ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.lineCap = 'round';
+    [[16, 'rgba(50,130,255,' + 0.16 * k * pulse + ')'], [7, 'rgba(90,175,255,' + 0.45 * k * pulse + ')'], [2.2, 'rgba(225,245,255,' + 0.95 * k + ')']].forEach(function (pass) {
+      ctx.lineWidth = pass[0]; ctx.strokeStyle = pass[1]; ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(bx, top); ctx.stroke();
+    });
+    var hg = ctx.createRadialGradient(bx, by, 0, bx, by, 22); hg.addColorStop(0, 'rgba(200,235,255,' + 0.9 * k + ')'); hg.addColorStop(1, 'rgba(60,140,255,0)');
+    ctx.fillStyle = hg; ctx.beginPath(); ctx.arc(bx, by, 22, 0, 6.3); ctx.fill(); ctx.restore();
+  }
+  function press() {                                                              // カシャ: flash burst, then the lettering pops and fades
+    for (var i = 0; i < shots.length; i++) {
+      var sh = shots[i], a = modeT - sh.t;
+      if (a < 0 || a > 0.9) continue;
+      if (a < 0.16 && !REDUCED) {
+        var fa = 1 - a / 0.16, fg = ctx.createRadialGradient(sh.x, sh.y, 0, sh.x, sh.y, 38);
+        fg.addColorStop(0, 'rgba(255,255,255,' + 0.9 * fa + ')'); fg.addColorStop(1, 'rgba(255,255,255,0)');
+        ctx.fillStyle = fg; ctx.beginPath(); ctx.arc(sh.x, sh.y, 38, 0, 6.3); ctx.fill();
+        ctx.strokeStyle = 'rgba(255,255,255,' + 0.8 * fa + ')'; ctx.lineWidth = 1.5; ctx.beginPath();
+        for (var k = 0; k < 8; k++) { var an = k * 0.785 + sh.rot, rr = k % 2 ? 26 : 40; ctx.moveTo(sh.x + Math.cos(an) * 10, sh.y + Math.sin(an) * 10); ctx.lineTo(sh.x + Math.cos(an) * rr, sh.y + Math.sin(an) * rr); }
+        ctx.stroke();
+      }
+      var sc = REDUCED || a >= 0.08 ? 1 : 1.4 - a / 0.08 * 0.4;
+      ctx.save(); ctx.globalAlpha = a < 0.6 ? 1 : 1 - (a - 0.6) / 0.3; ctx.translate(sh.x, sh.y - 18); ctx.rotate(sh.rot); ctx.scale(sc, sc);
+      ctx.font = '800 ' + sh.size + 'px ' + DISPLAY; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round';
+      ctx.lineWidth = sh.size / 4; ctx.strokeStyle = '#0b0a0d'; ctx.strokeText(sh.txt, 0, 0);
+      ctx.fillStyle = '#ece6d6'; ctx.fillText(sh.txt, 0, 0);
+      ctx.restore();
+    }
   }
   function caption() {
     ctx.fillStyle = 'rgba(12,11,15,0.9)'; ctx.fillRect(0, H - 66, W, 66);
@@ -609,11 +874,12 @@ canvas { width: 100%; height: 100%; object-fit: contain; display: block; }
     ctx.drawImage(bg, 0, 0);
     var cx = -(((cloudX % (W * 2)) + W * 2) % (W * 2));
     ctx.drawImage(clouds, cx, 0); ctx.drawImage(clouds, cx + W * 2, 0);
+    var sk = shakeA * Math.max(0, 1 - (time - shakeT) / 0.35); ctx.save(); if (sk > 0.2) ctx.translate(rnd(-sk, sk), rnd(-sk, sk));
     for (i = 0; i < pools.length; i++) { ctx.fillStyle = 'rgba(10,9,14,0.8)'; ctx.beginPath(); ctx.ellipse(pools[i].x, pools[i].y, pools[i].rx, pools[i].ry, 0, 0, 6.3); ctx.fill(); }
     tower();
     if (mode === 'play') {                                                           // where the tips can reach
       ctx.strokeStyle = 'rgba(240,180,74,0.5)'; ctx.setLineDash([4, 5]); ctx.lineWidth = 1.5;
-      ctx.beginPath(); ctx.moveTo(ZONE0 - RAD, ARM_Y - 44); ctx.lineTo(ZONE0 - RAD, ARM_Y - 18); ctx.moveTo(ZONE1 + RAD, ARM_Y - 44); ctx.lineTo(ZONE1 + RAD, ARM_Y - 18); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(ZONE0 - RAD, armH - 44); ctx.lineTo(ZONE0 - RAD, armH - 18); ctx.moveTo(ZONE1 + RAD, armH - 44); ctx.lineTo(ZONE1 + RAD, armH - 18); ctx.stroke();
       ctx.setLineDash([]);
     }
     stick(false);
@@ -632,9 +898,15 @@ canvas { width: 100%; height: 100%; object-fit: contain; display: block; }
       ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x - p.vx * 0.03, p.y - p.vy * 0.03); ctx.stroke();
     }
     ctx.globalCompositeOperation = 'source-over';
-    if (Math.abs(wind) > 8) {                                                        // wind streaks
+    var fk = fogK(); if (fk > 0) { fog(fk); laser(fk); }
+    var wsp = Math.hypot(wind, windY);
+    if (wsp > 8) {                                                                   // wind streaks
+      var ux = wind / wsp, uy = windY / wsp;
       ctx.strokeStyle = 'rgba(236,230,214,0.12)'; ctx.lineWidth = 1;
-      for (i = 0; i < 6; i++) { var wx = ((time * wind * 4 + i * 97) % (W + 80) + W + 80) % (W + 80) - 40, wy = 120 + i * 78; ctx.beginPath(); ctx.moveTo(wx, wy); ctx.lineTo(wx - Math.sign(wind) * 30, wy); ctx.stroke(); }
+      for (i = 0; i < 6; i++) {
+        var wx = (((streakX + i * 97) % (W + 80)) + W + 80) % (W + 80) - 40, wy = (((120 + i * 78 + streakY) % H) + H) % H;
+        ctx.beginPath(); ctx.moveTo(wx, wy); ctx.lineTo(wx - ux * 30, wy - uy * 30); ctx.stroke();
+      }
     }
     var vg = ctx.createRadialGradient(W / 2, H / 2, H * 0.35, W / 2, H / 2, H * 0.75);
     vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,0.42)');
@@ -642,14 +914,21 @@ canvas { width: 100%; height: 100%; object-fit: contain; display: block; }
     ctx.save(); ctx.globalAlpha = 0.07; ctx.globalCompositeOperation = 'overlay';
     if (!REDUCED) ctx.translate(-Math.random() * 128, -Math.random() * 128);
     ctx.fillStyle = grainPat; ctx.fillRect(0, 0, W + 128, H + 128); ctx.restore();
+    ctx.restore(); if (!noHud) bamDraw();
     if (mode !== 'title' && !noHud) hud();
     if (beatT >= 0 && time - beatT < 2.6 && !noHud) {
       ctx.save(); ctx.globalAlpha = clamp((2.6 - (time - beatT)) / 0.5, 0, 1); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.font = '800 26px ' + DISPLAY; ctx.lineWidth = 4; ctx.lineJoin = 'round'; ctx.strokeStyle = '#0b0a0d';
       ctx.strokeText(A('beaten'), W / 2, 140); ctx.fillStyle = '#f0b44a'; ctx.fillText(A('beaten'), W / 2, 140); ctx.restore();
     }
+    if (mode === 'play' && air.tw && time - bannerT < 2.4 && !noHud) {               // what is new on this level
+      ctx.save(); ctx.globalAlpha = clamp((2.4 - (time - bannerT)) / 0.5, 0, 1); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.font = '800 22px ' + DISPLAY; ctx.lineWidth = 4; ctx.lineJoin = 'round'; ctx.strokeStyle = '#0b0a0d';
+      ctx.strokeText(t('tw' + air.tw), W / 2, 176); ctx.fillStyle = '#f0b44a'; ctx.fillText(t('tw' + air.tw), W / 2, 176); ctx.restore();
+    }
+    if (mode === 'caught' && shots.length && !noHud) press();
     if (mode === 'caught') {
-      var k = clamp(modeT / 0.3, 0, 1), txt = t(s.perfect ? 'perfect' : 'caughtB');
+      var k = clamp(modeT / 0.3, 0, 1), txt = level >= MAX_LV ? t('allB') : t(s.perfect ? 'perfect' : 'caughtB');
       ctx.save(); ctx.globalAlpha = k; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.font = '800 ' + (42 + (1 - k) * 24) + 'px ' + DISPLAY;
       ctx.lineWidth = 5; ctx.lineJoin = 'round'; ctx.strokeStyle = '#ece6d6'; ctx.strokeText(txt, 150, 190);
@@ -661,11 +940,13 @@ canvas { width: 100%; height: 100%; object-fit: contain; display: block; }
   // ---------- input ----------
   function advance() {
     if (!overlayShown || photo) return;
-    if (mode === 'title' || mode === 'over') newGame();
-    else if (mode === 'caught') { level++; startLevel(); }
+    if (mode === 'title') newGame();
+    else if (mode === 'over') { if (level > 1) contGame(); else newGame(); }
+    else if (mode === 'caught') { if (level >= MAX_LV) newGame(); else { level++; startLevel(); } }
     else if (mode === 'fail') startLevel();
   }
   pBtn.addEventListener('click', advance);
+  pBtn2.addEventListener('click', function () { if (overlayShown && !photo && mode === 'over') newGame(); });
   var map = { ArrowLeft: 'l', a: 'l', A: 'l', ArrowRight: 'r', d: 'r', D: 'r', ArrowUp: 'u', w: 'u', W: 'u', ' ': 'u' };
   var btns = { l: document.getElementById('bL'), u: document.getElementById('bU'), r: document.getElementById('bR') };
   function setKey(k, v) { keys[k] = v; btns[k].classList.toggle('on', v); }
@@ -679,12 +960,18 @@ canvas { width: 100%; height: 100%; object-fit: contain; display: block; }
   });
   addEventListener('keyup', function (e) { var k = map[e.key]; if (k) setKey(k, false); });
   addEventListener('blur', function () { setKey('l', false); setKey('r', false); setKey('u', false); });
-  Object.keys(btns).forEach(function (k) {
-    var b = btns[k];
-    b.addEventListener('pointerdown', function (e) { e.preventDefault(); try { b.setPointerCapture(e.pointerId); } catch (x) {} setKey(k, true); });
-    ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(function (ev) { b.addEventListener(ev, function () { setKey(k, false); }); });
-    b.addEventListener('contextmenu', function (e) { e.preventDefault(); });
-  });
+  // on-screen pad: every finger owns the button under it, so a thumb can slide from ↺ to ↻ without lifting
+  var pad = document.querySelector('.pad'), fingers = {};
+  function padKey(e) { var el = document.elementFromPoint(e.clientX, e.clientY); el = el && el.closest ? el.closest('.pad .btn') : null; return el ? el.dataset.k : null; }
+  function padSync() {
+    var on = { l: false, r: false, u: false };
+    for (var id in fingers) if (fingers[id]) on[fingers[id]] = true;
+    ['l', 'r', 'u'].forEach(function (k) { if (keys[k] !== on[k]) setKey(k, on[k]); });
+  }
+  pad.addEventListener('pointerdown', function (e) { e.preventDefault(); try { pad.setPointerCapture(e.pointerId); } catch (x) {} fingers[e.pointerId] = padKey(e); padSync(); });
+  pad.addEventListener('pointermove', function (e) { if (!(e.pointerId in fingers)) return; var k = padKey(e); if (k !== fingers[e.pointerId]) { fingers[e.pointerId] = k; padSync(); } });
+  ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(function (ev) { pad.addEventListener(ev, function (e) { if (!(e.pointerId in fingers)) return; delete fingers[e.pointerId]; padSync(); }); });
+  pad.addEventListener('contextmenu', function (e) { e.preventDefault(); });
 
   // ---------- score card, share, challenge (Pocket Arcade standard flow) ----------
   var GAME = 'wild-catch', chal = Arcade.readChallenge(GAME), beatT = -1, perfects = 0, noHud = false;
@@ -700,17 +987,17 @@ canvas { width: 100%; height: 100%; object-fit: contain; display: block; }
   }
   function cleanFrame(into) { noHud = true; draw(); into.getContext('2d').drawImage(cv, 0, 0, W, H); noHud = false; draw(); }
   function finish() {   // one JSON result per finished round (a catch or game over)
-    card.result = Arcade.result(GAME, { score: score, level: level, outcome: mode === 'caught' ? 'clear' : 'over',
-      perfect: perfects > 0, lang: lang, stats: { perfects: perfects, livesLeft: lives, best: best } });
+    card.result = Arcade.result(GAME, { score: score, level: level, outcome: mode === 'caught' ? (level >= MAX_LV ? 'complete' : 'clear') : 'over',
+      perfect: perfects > 0, lang: lang, stats: { perfects: perfects, livesLeft: lives, best: best, cleared: cleared(), levels: MAX_LV } });
   }
-  function post() { return t(score > 0 ? 'post' : 'postMiss', score, level, card.link); }
+  function post() { return t(score > 0 ? 'post' : 'postMiss', score, cleared(), card.link, leftLine(), MAX_LV); }
   function prepCard() {
     if (!card.result) return;
     var snap = hasMoment ? moment : (function () { var c = document.createElement('canvas'); c.width = W; c.height = H; cleanFrame(c); return c; })();
     var pf = t('perfect').replace(/[！!]\s*$/, '');
     card.link = Arcade.challengeUrl(card.result, lang);
     var cvs = Arcade.renderCard({ game: GAME, lang: lang, snapshot: snap, title: t('title'), score: score,
-      detail: t('lv', level) + (perfects ? '　' + pf + ' ×' + perfects : ''), url: card.link });
+      detail: t('clr', cleared(), MAX_LV) + (perfects ? '　' + pf + ' ×' + perfects : ''), url: card.link });
     var token = {}; card.token = token; card.blob = null;
     Arcade.toBlob(cvs).then(function (b) {
       if (card.token !== token) return;
