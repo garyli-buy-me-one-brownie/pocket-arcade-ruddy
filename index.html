@@ -61,9 +61,12 @@ body { background: var(--film); color: var(--paper); font-family: var(--font-ui)
 
 .grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); margin: 32px 0 40px; }
 .game { display: flex; flex-direction: column; background: var(--tile); border: 1px solid var(--rule); border-top: 4px solid var(--accent); }
-.art { display: block; width: 100%; aspect-ratio: 1200 / 630; object-fit: cover; background: #000; }
+/* og/*.jpg are link previews with their own frame (a 1px rule 20px in, plus a 5px accent bar on top).
+   The card already has a border, so show only x 24-1176, y 28-606 of the 1200x630 image. */
+.artbox { position: relative; overflow: hidden; aspect-ratio: 1152 / 578; background: #000; }
+.art { position: absolute; left: -2.0833%; top: -4.8443%; width: 104.1667%; max-width: none; aspect-ratio: 1200 / 630; }
 .soonart {
-  aspect-ratio: 1200 / 630; display: grid; place-items: center;
+  aspect-ratio: 1152 / 578; display: grid; place-items: center;
   background: repeating-linear-gradient(135deg, rgba(236, 230, 214, 0.035) 0 10px, transparent 10px 20px);
   font-family: var(--font-display); font-weight: 800; font-size: 64px; color: var(--accent); opacity: 0.75;
 }
@@ -168,7 +171,7 @@ footer {
     Arcade.games.forEach(function (g) {
       var live = g.status === 'live', card = el('article', 'game');
       card.style.setProperty('--accent', g.accent);
-      if (live) { var img = el('img', 'art'); img.src = 'og/' + g.id + '.jpg'; img.alt = ''; img.loading = 'lazy'; card.appendChild(img); }
+      if (live) { var box = el('div', 'artbox'), img = el('img', 'art'); img.src = 'og/' + g.id + '.jpg'; img.alt = ''; img.loading = 'lazy'; box.appendChild(img); card.appendChild(box); }
       else card.appendChild(el('div', 'soonart', GLYPH[g.id] || '?'));
       var body = el('div', 'body');
       body.appendChild(el('div', 'name', g.name.toUpperCase()));
